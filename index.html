@@ -140,21 +140,35 @@ details.mapmenu>summary:hover{background:#f5f7f8}
       <div style="flex:0 0 90px"><input type="number" id="dwell" value="30" min="0" max="240" step="5"></div>
     </div>
     <div class="add-row" style="margin-top:8px;gap:10px;align-items:center">
-      <div style="flex:1"><label class="fl" style="margin:0">구간 이동(분, 가정)</label></div>
+      <div style="flex:1"><label class="fl" style="margin:0">구간 이동(분, 임시계산용)</label></div>
       <div style="flex:0 0 90px"><input type="number" id="travel" value="15" min="0" max="180" step="5"></div>
-      <div style="flex:1"><label class="fl" style="margin:0">구간 거리(km, 가정)</label></div>
+      <div style="flex:1"><label class="fl" style="margin:0">구간 거리(km, 임시계산용)</label></div>
       <div style="flex:0 0 90px"><input type="number" id="legkm" value="6" min="0" max="60" step="0.5"></div>
     </div>
 
-    <button class="btn primary" id="calcBtn" style="margin-top:16px">🧮 출장 순서 계산</button>
+    <details class="settings" style="margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:0 12px">
+      <summary style="cursor:pointer;padding:11px 0;font-size:.85rem;font-weight:600;color:var(--paju2);list-style:none">⚙️ 도로 기반 최적 경로 설정 (VWorld 인증키)</summary>
+      <div style="padding:0 0 14px">
+        <label class="fl">VWorld 무료 인증키</label>
+        <input type="text" id="vworldKey" placeholder="VWorld에서 발급한 인증키를 붙여넣으세요" autocomplete="off" spellcheck="false">
+        <p class="foot" style="text-align:left;margin-top:8px;line-height:1.6">
+          키를 입력하면 주소를 좌표로 변환(VWorld)하고 <b>도로 기준 최적 방문순서·실거리·실시간</b>(OSRM)으로 계산합니다.
+          키는 <b>이 브라우저에만</b> 저장되며 서버로 전송·저장되지 않습니다.<br>
+          ※ VWorld 키는 <b>배포 도메인</b>(예: <code>smile7962.github.io</code>, 로컬 테스트는 <code>localhost</code>)으로 등록되어 있어야 합니다.
+          키 미설정·오류 시 자동으로 임시계산(입력 순서·가정값)으로 표시됩니다.
+        </p>
+      </div>
+    </details>
+
+    <button class="btn primary" id="calcBtn" style="margin-top:14px">🧮 출장 순서 계산</button>
   </section>
 
   <!-- ── 결과 ── -->
   <section class="card hide" id="resultCard">
     <h2>🗂️ 출장 순서 결과</h2>
-    <div class="notice info">
+    <div class="notice" id="modeNotice">
       <span class="i">ℹ️</span>
-      <span>현재 결과는 <b>임시 계산 방식</b>(입력 순서 기준)으로 생성되었을 수 있습니다. 실제 출발 전 네이버지도 또는 카카오맵에서 최종 이동시간을 확인하세요.</span>
+      <span>계산 방식이 여기에 표시됩니다. 실제 출발 전 네이버지도 또는 카카오맵에서 최종 이동시간을 확인하세요.</span>
     </div>
 
     <div class="summary">
@@ -217,7 +231,13 @@ details.mapmenu>summary:hover{background:#f5f7f8}
 var HQ = { name:"파주시청", addr:"경기 파주시 시청로 50" };
 var MAX = 15;
 var sites = [];   // {name, addr}
-var ordered = []; // 계산 결과(현재는 입력 순서)
+var ordered = []; // 계산 결과(도로 최적순서 또는 입력 순서)
+var calcMode = 'temp';   // 'road' | 'temp'
+var lastRows = [], lastMeta = null;  // 마지막 렌더 상태(복사/CSV 재생성용)
+var KEY_LS = 'pj_vworld_key';
+var VWORLD = 'https://api.vworld.kr/req/address';
+var OSRM = 'https://router.project-osrm.org/trip/v1/driving/';
+function vworldKey(){ return ($("vworldKey").value||"").trim(); }
 
 /* ===== 유틸 ===== */
 function $(id){ return document.getElementById(id); }
@@ -240,6 +260,34 @@ function kakaoSearchUrl(q){ return "https://map.kakao.com/?q="+enc(q); }
 function kakaoRouteUrl(from,to){ return "https://map.kakao.com/?sName="+enc(from)+"&eName="+enc(to); }
 function openUrl(url){ window.open(url,"_blank","noopener"); }
 function placeQuery(s){ return s.addr ? s.addr : s.name; } // 검색은 주소 우선
+
+/* ===== 도로 기반 최적화 (VWorld 지오코딩 + OSRM /trip) ===== */
+// 주소 -> 좌표 (도로명 우선, 실패 시 지번)
+function geocode(addr){
+  var key=vworldKey();
+  if(!key) return Promise.reject({type:'NO_KEY'});
+  var base=VWORLD+'?service=address&request=getcoord&version=2.0&crs=epsg:4326&format=json'
+    +'&key='+encodeURIComponent(key)+'&address='+encodeURIComponent(addr);
+  function tryType(type){
+    return fetch(base+'&type='+type).then(function(r){return r.json();}).then(function(j){
+      if(j&&j.response&&j.response.status==='OK'&&j.response.result&&j.response.result.point){
+        var p=j.response.result.point; return { lng:parseFloat(p.x), lat:parseFloat(p.y) };
+      }
+      return null;
+    });
+  }
+  return tryType('road').then(function(c){ return c || tryType('parcel'); })
+    .then(function(c){ if(!c) throw {type:'NOT_FOUND', addr:addr}; return c; });
+}
+// 좌표 배열(첫 좌표=파주시청) -> 도로 기준 최적 왕복 경로
+function osrmTrip(coords){
+  var path=coords.map(function(c){return c.lng+','+c.lat;}).join(';');
+  var url=OSRM+path+'?source=first&roundtrip=true&overview=false&annotations=false';
+  return fetch(url).then(function(r){return r.json();}).then(function(j){
+    if(!j||j.code!=='Ok'||!j.trips||!j.trips.length) throw {type:'OSRM', msg:(j&&(j.message||j.code))||'경로 계산 실패'};
+    return j;
+  });
+}
 
 /* ===== 입력 렌더 ===== */
 function renderSites(){
@@ -284,41 +332,102 @@ $("siteList").addEventListener("click",function(e){
 $("addBtn").addEventListener("click",addSite);
 $("inAddr").addEventListener("keydown",function(e){ if(e.key==="Enter") addSite(); });
 
-/* ===== 계산 ===== */
+/* ===== 계산 (도로 최적화 우선, 실패 시 임시계산 폴백) ===== */
 function calculate(){
   if(!sites.length){ toast("출장지를 1곳 이상 추가하세요."); return; }
-  // 임시 계산: 입력 순서 기준. 전체 경유지 = HQ -> sites... -> HQ
-  ordered = sites.slice();
-  var legMin=num("travel",15), dwellMin=num("dwell",30), legKm=num("legkm",6);
-  var start=parseStart();
-  var legs = ordered.length+1;                 // HQ→1, 1→2, ..., n→HQ
-  var totalTravel = legs*legMin;
-  var totalDwell  = ordered.length*dwellMin;
-  var totalMin    = totalTravel+totalDwell;
-  var totalKm     = legs*legKm;
-
-  // 각 현장 도착 예정시각
-  var clock=start; var rows=[];
-  for(var i=0;i<ordered.length;i++){
-    clock += legMin;                            // 이동
-    var eta=clock;
-    clock += dwellMin;                          // 체류
-    rows.push({ idx:i, eta:eta });
+  var btn=$("calcBtn"); var label=btn.textContent; btn.disabled=true;
+  if(vworldKey()){
+    btn.textContent="⏳ 좌표 변환·도로 경로 계산 중...";
+    calcRoad().catch(function(e){ calcTemp(geoErrMsg(e)); })
+      .then(function(){ btn.disabled=false; btn.textContent=label; });
+  } else {
+    calcTemp("VWorld 인증키 미설정");
+    btn.disabled=false; btn.textContent=label;
   }
-  var backEta = clock + legMin;                 // 마지막 현장 → 복귀
+}
 
-  // 요약
+function geoErrMsg(e){
+  if(!e) return "도로 경로 계산 실패";
+  if(e.type==='NO_KEY') return "VWorld 인증키 미설정";
+  if(e.type==='NOT_FOUND') return "주소 좌표변환 실패: "+(e.addr||"");
+  if(e.type==='OSRM') return "도로 경로(OSRM) 계산 실패";
+  return "도로 경로 계산 실패(네트워크/CORS) — 키 등록 도메인을 확인하세요";
+}
+
+// 도로 기반 최적순서 계산
+function calcRoad(){
+  var pts=[HQ].concat(sites);                 // index 0 = 파주시청
+  var seq=Promise.resolve([]);
+  pts.forEach(function(pt){
+    seq=seq.then(function(acc){ return geocode(placeQuery(pt)).then(function(c){ acc.push(c); return acc; }); });
+  });
+  return seq.then(function(coords){
+    return osrmTrip(coords).then(function(trip){
+      var wps=trip.waypoints, legs=trip.trips[0].legs;  // legs: HQ→v1,...,vn→HQ (방문순서)
+      var arr=[];
+      for(var i=1;i<pts.length;i++){ arr.push({ site:sites[i-1], wp:wps[i].waypoint_index }); }
+      arr.sort(function(a,b){ return a.wp-b.wp; });
+      ordered=arr.map(function(o){ return o.site; });
+      var start=parseStart(), dwellMin=num("dwell",30);
+      var clock=start, rows=[], distM=0;
+      for(var i=0;i<ordered.length;i++){
+        var leg=legs[i]||{duration:0,distance:0};
+        distM+=leg.distance; clock+=Math.round(leg.duration/60);
+        rows.push({ idx:i, eta:clock });
+        clock+=dwellMin;
+      }
+      var back=legs[ordered.length]||{duration:0,distance:0};
+      distM+=back.distance; var backEta=clock+Math.round(back.duration/60);
+      calcMode='road';
+      renderAll(rows, {totalMin:backEta-start, totalKm:distM/1000, backEta:backEta, start:start});
+      toast("도로 기반 최적 경로로 계산했습니다.");
+    });
+  });
+}
+
+// 임시 계산(입력 순서·가정값)
+function calcTemp(reason){
+  ordered=sites.slice();
+  var legMin=num("travel",15), dwellMin=num("dwell",30), legKm=num("legkm",6);
+  var start=parseStart(), clock=start, rows=[];
+  for(var i=0;i<ordered.length;i++){ clock+=legMin; rows.push({idx:i,eta:clock}); clock+=dwellMin; }
+  var backEta=clock+legMin, legs=ordered.length+1;
+  calcMode='temp';
+  setModeNotice('temp', reason);
+  renderAll(rows, {totalMin:backEta-start, totalKm:legs*legKm, backEta:backEta, start:start});
+}
+
+function fmtDur(m){ m=Math.round(m); return m>=60? Math.floor(m/60)+"시간 "+(m%60)+"분" : m+"분"; }
+
+// 공통 렌더(요약 + 표 + 모바일텍스트)
+function renderAll(rows, meta){
+  if(calcMode==='road') setModeNotice('road');
   $("sTotal").textContent = ordered.length+"곳";
-  $("sTime").textContent  = (totalMin>=60? Math.floor(totalMin/60)+"시간 "+(totalMin%60)+"분" : totalMin+"분");
-  $("sDist").textContent  = totalKm.toFixed(1)+"km";
-  $("sBack").textContent  = fmtTime(backEta);
-
+  $("sTime").textContent  = fmtDur(meta.totalMin);
+  $("sDist").textContent  = meta.totalKm.toFixed(1)+"km";
+  $("sBack").textContent  = fmtTime(meta.backEta);
+  lastRows=rows; lastMeta=meta;
   renderResult(rows);
-  buildMobileText(rows, {totalMin:totalMin, totalKm:totalKm, backEta:backEta, start:start, legMin:legMin});
+  buildMobileText(rows, meta);
   $("resultCard").classList.remove("hide");
   $("mapCard").classList.remove("hide");
   $("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
 }
+
+function setModeNotice(mode, reason){
+  var box=$("modeNotice"); if(!box) return;
+  if(mode==='road'){
+    box.className="notice info";
+    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 (VWorld 좌표변환 + OSRM 도로 경로). 거리·시간은 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있으니, 출발 전 네이버/카카오에서 최종 확인하세요.</span>';
+  } else {
+    box.className="notice";
+    box.innerHTML='<span class="i">⚠️</span><span><b>임시 계산(입력 순서·가정값)</b>으로 표시합니다'+(reason?' — '+esc(reason):'')+'. 도로 기반 최적화를 쓰려면 ⚙️ 설정에서 VWorld 무료 인증키를 등록하세요. 실제 이동시간은 네이버/카카오에서 확인하세요.</span>';
+  }
+}
+function distLabel(){ return calcMode==='road' ? '' : ' (가정값)'; }
+function methodLine(){ return calcMode==='road'
+  ? '도로 기반 최적 경로(VWorld 좌표변환 + OSRM 도로 경로) · 자동차 도로 기준 추정'
+  : '파주길잡이 임시 계산(입력 순서·가정값)'; }
 
 function renderResult(rows){
   var body=$("resultBody");
@@ -387,8 +496,8 @@ function orderText(){
   lines.push("복귀: "+HQ.name,"");
   lines.push("총 출장지 수: "+ordered.length+"곳");
   lines.push("총 예상 소요시간: "+$("sTime").textContent);
-  lines.push("총 이동거리: "+$("sDist").textContent+" (가정값)");
-  lines.push("계산 방식: 파주길잡이 임시 계산(입력 순서 기준) · 실제 이동은 지도앱에서 최종 확인");
+  lines.push("총 이동거리: "+$("sDist").textContent+distLabel());
+  lines.push("계산 방식: "+methodLine()+" · 실제 이동은 지도앱에서 최종 확인");
   return lines.join("\n");
 }
 
@@ -398,16 +507,18 @@ function buildMobileText(rows,meta){
   L.push("출발 "+fmtTime(meta.start)+"  "+HQ.name+"  ["+HQ.addr+"]");
   for(var i=0;i<ordered.length;i++){
     var s=ordered[i];
+    var memo=(memos[i+1]&&memos[i+1].value.trim())||"____";
     L.push("");
     L.push((i+1)+") "+fmtTime(rows[i].eta)+" 도착예정");
     L.push("   "+(s.name||""));
     L.push("   주소: "+(s.addr||"(주소 없음)"));
-    L.push("   메모: ____");
+    L.push("   메모: "+memo);
   }
   L.push("");
   L.push("복귀 "+fmtTime(meta.backEta)+"  "+HQ.name);
   L.push("");
-  L.push("총 "+ordered.length+"곳 · 예상 "+$("sTime").textContent+" · "+$("sDist").textContent+"(가정)");
+  L.push("총 "+ordered.length+"곳 · 예상 "+$("sTime").textContent+" · "+$("sDist").textContent+distLabel());
+  L.push("계산: "+methodLine());
   L.push("※ 지도앱 검색은 위 '주소'를 그대로 붙여넣으세요. 실제 이동시간은 출발 전 네이버/카카오에서 확인.");
   $("mobileText").value=L.join("\n");
 }
@@ -451,25 +562,19 @@ $("naverAllBtn").addEventListener("click",function(){openAll("naver");});
 $("kakaoAllBtn").addEventListener("click",function(){openAll("kakao");});
 $("copyOrderBtn").addEventListener("click",function(){copyText(orderText(),"출장 순서를 복사했습니다.");});
 $("copyMobileBtn").addEventListener("click",function(){
-  // 메모 최신화 후 복사
-  buildMobileText(currentRows(), currentMeta());
+  if(lastMeta){ buildMobileText(lastRows, lastMeta); }   // 메모 반영 후 복사
   copyText($("mobileText").value,"모바일 확인용 텍스트를 복사했습니다.");
 });
 $("csvBtn").addEventListener("click",exportCsv);
 $("printBtn").addEventListener("click",function(){window.print();});
 
-/* 모바일 텍스트 재생성을 위한 현재값 헬퍼 */
-function currentRows(){
-  var legMin=num("travel",15), dwellMin=num("dwell",30); var clock=parseStart(); var rows=[];
-  for(var i=0;i<ordered.length;i++){ clock+=legMin; rows.push({eta:clock}); clock+=dwellMin; }
-  rows._backEta = clock+legMin; return rows;
-}
-function currentMeta(){
-  var legMin=num("travel",15), dwellMin=num("dwell",30), legKm=num("legkm",6);
-  var legs=ordered.length+1; var clock=parseStart();
-  for(var i=0;i<ordered.length;i++){ clock+=legMin+dwellMin; }
-  return {totalMin:legs*legMin+ordered.length*dwellMin, totalKm:legs*legKm, backEta:clock+legMin, start:parseStart(), legMin:legMin};
-}
+/* VWorld 인증키: 이 브라우저(localStorage)에만 저장 */
+(function(){
+  try{ var v=localStorage.getItem(KEY_LS); if(v) $("vworldKey").value=v; }catch(e){}
+  $("vworldKey").addEventListener("change",function(){
+    try{ localStorage.setItem(KEY_LS, vworldKey()); }catch(e){}
+  });
+})();
 
 /* 초기 렌더 */
 renderSites();
