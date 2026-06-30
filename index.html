@@ -57,7 +57,7 @@ textarea{resize:vertical}
 .notice{background:var(--warnbg);border:1px solid #fed7aa;color:var(--warn);border-radius:10px;padding:11px 13px;font-size:.8rem;margin-bottom:12px;display:flex;gap:8px}
 .notice .i{flex-shrink:0}
 .notice.info{background:#eff6ff;border-color:#bfdbfe;color:#1e40af}
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .summary .box{background:#f0f7f3;border-radius:10px;padding:11px;text-align:center}
 .summary .v{font-size:1.15rem;font-weight:700;color:var(--paju2)}
 .summary .l{font-size:.7rem;color:var(--muted);margin-top:2px}
@@ -68,9 +68,17 @@ table.result td .nm{font-weight:600}
 table.result td .ad{font-size:.78rem;color:var(--muted);word-break:break-all}
 table.result .seq{font-weight:700;color:var(--paju2)}
 .eta{font-family:"JetBrains Mono",monospace;font-weight:700;color:var(--accent);white-space:nowrap}
-.mapbtns{display:flex;flex-wrap:wrap;gap:6px}
-.mbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 11px;font-size:.78rem;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--ink);font-family:inherit;display:inline-flex;align-items:center;gap:5px}
-.mbtn:hover{background:#f5f7f8}
+.stoplist{display:flex;flex-direction:column;gap:10px}
+.stop{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fff}
+.stop.hq{background:#f0f7f3;border-color:#cfe6da}
+.stop-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.stop-badge{flex:0 0 auto;min-width:30px;height:30px;padding:0 8px;border-radius:9px;background:var(--paju);color:#fff;font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center}
+.stop.hq .stop-badge{background:var(--accent);font-size:.74rem}
+.stop-addr{font-size:.95rem;font-weight:600;line-height:1.4;word-break:break-all;padding-top:4px}
+.mapbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mapbtns.two{grid-template-columns:repeat(2,1fr)}
+.mbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 6px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--ink);font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.mbtn:active{background:#eef1f3}
 .mbtn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .mbtn.n{border-color:#9fe3bf}.mbtn.n .dot{background:#03c75a}
 .mbtn.k{border-color:#ecdf7a;background:#fffdf2}.mbtn.k .dot{background:#fbe000}
@@ -93,7 +101,7 @@ details.mapmenu>summary:hover{background:#f5f7f8}
 .foot{font-size:.74rem;color:var(--muted);text-align:center;margin-top:8px}
 .hide{display:none!important}
 @media(max-width:620px){
-  .summary{grid-template-columns:repeat(2,1fr)}
+  .summary{grid-template-columns:repeat(3,1fr)}
   .btn-grid{grid-template-columns:1fr}
   table.result thead{display:none}
   table.result,table.result tbody,table.result tr,table.result td{display:block;width:100%}
@@ -141,16 +149,8 @@ details.mapmenu>summary:hover{background:#f5f7f8}
     <div class="fixed-stop" style="margin-top:6px"><span class="pin end">복귀</span><div><b>파주시청</b> · 경기 파주시 시청로 50</div></div>
 
     <div class="add-row" style="margin-top:14px;gap:10px;align-items:center">
-      <div style="flex:0 0 auto"><label class="fl" style="margin:0">출발 시각</label></div>
-      <div style="flex:0 0 120px"><input type="time" id="startTime" value="09:00"></div>
       <div style="flex:1"><label class="fl" style="margin:0">현장당 체류(분)</label></div>
-      <div style="flex:0 0 90px"><input type="number" id="dwell" value="30" min="0" max="240" step="5"></div>
-    </div>
-    <div class="add-row" style="margin-top:8px;gap:10px;align-items:center">
-      <div style="flex:1"><label class="fl" style="margin:0">구간 이동(분, 임시계산용)</label></div>
-      <div style="flex:0 0 90px"><input type="number" id="travel" value="15" min="0" max="180" step="5"></div>
-      <div style="flex:1"><label class="fl" style="margin:0">구간 거리(km, 임시계산용)</label></div>
-      <div style="flex:0 0 90px"><input type="number" id="legkm" value="6" min="0" max="60" step="0.5"></div>
+      <div style="flex:0 0 110px"><input type="number" id="dwell" value="30" min="0" max="240" step="5"></div>
     </div>
 
     <details class="settings" style="margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:0 12px">
@@ -174,6 +174,11 @@ details.mapmenu>summary:hover{background:#f5f7f8}
           오류 시 자동으로 임시계산(입력 순서·가정값)으로 표시됩니다.<br>
           <b>참고:</b> VWorld 지오코더는 브라우저 직접 호출(CORS)이 막혀 순수 웹앱에서는 사용할 수 없어 제외했습니다.
         </p>
+        <label class="fl" style="margin-top:12px">임시계산용(좌표변환 실패 시) — 구간 이동(분) / 거리(km)</label>
+        <div style="display:flex;gap:10px">
+          <input type="number" id="travel" value="15" min="0" max="180" step="5">
+          <input type="number" id="legkm" value="6" min="0" max="60" step="0.5">
+        </div>
       </div>
     </details>
 
@@ -192,24 +197,13 @@ details.mapmenu>summary:hover{background:#f5f7f8}
       <div class="box"><div class="v" id="sTotal">0</div><div class="l">총 출장지</div></div>
       <div class="box"><div class="v" id="sTime">0분</div><div class="l">총 예상 소요</div></div>
       <div class="box"><div class="v" id="sDist">0km</div><div class="l">총 이동거리</div></div>
-      <div class="box"><div class="v" id="sBack">—</div><div class="l">복귀 예정</div></div>
     </div>
 
-    <div style="overflow-x:auto">
-    <table class="result">
-      <thead><tr><th>순번</th><th>현장</th><th>도착</th><th>메모</th><th class="no-print">지도</th></tr></thead>
-      <tbody id="resultBody"></tbody>
-    </table>
-    </div>
+    <div id="resultBody" class="stoplist"></div>
 
     <p class="foot" style="text-align:left;margin-top:12px">
-      ※ 지도 버튼은 출발 전 위치 확인·실제 이동 참고용 <b>보조 기능</b>입니다(무료 공개 링크). 실제 교통상황은 지도앱에서 확인하세요.
+      ※ 지도 버튼은 위치 확인·이동 참고용 보조 기능입니다(무료 공개 링크). 실제 교통상황은 지도앱에서 확인하세요.
     </p>
-
-    <div class="btn-grid no-print" style="margin-top:14px">
-      <button class="btn ghost" id="csvBtn">📊 엑셀(CSV) 저장</button>
-      <button class="btn ghost" id="printBtn">🖨️ 인쇄</button>
-    </div>
   </section>
 
   <p class="foot">파주길잡이 · 파주시 관내 출장 전용 내부 업무도구</p>
@@ -237,13 +231,9 @@ function $(id){ return document.getElementById(id); }
 function enc(s){ return encodeURIComponent((s||"").trim()); }
 function esc(s){ return (s||"").replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function isPaju(addr){ return /파주/.test(addr||""); }
-function pad(n){ return (n<10?"0":"")+n; }
 function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove("show");},1900); }
 
-/* 분 단위 시각 계산 */
-function parseStart(){ var v=($("startTime").value||"09:00").split(":"); return (parseInt(v[0],10)||0)*60+(parseInt(v[1],10)||0); }
-function fmtTime(mins){ mins=((mins%1440)+1440)%1440; return pad(Math.floor(mins/60))+":"+pad(mins%60); }
-function num(id,def){ var v=parseFloat($(id).value); return isNaN(v)?def:v; }
+function num(id,def){ var el=$(id); var v=el?parseFloat(el.value):NaN; return isNaN(v)?def:v; }
 
 /* ===== 무료 지도앱 링크 빌더 (공개 URL only) ===== */
 // 개별 위치 검색
@@ -417,18 +407,10 @@ function calcRoad(){
       for(var i=1;i<pts.length;i++){ arr.push({ site:sites[i-1], wp:wps[i].waypoint_index }); }
       arr.sort(function(a,b){ return a.wp-b.wp; });
       ordered=arr.map(function(o){ return o.site; });
-      var start=parseStart(), dwellMin=num("dwell",30);
-      var clock=start, rows=[], distM=0;
-      for(var i=0;i<ordered.length;i++){
-        var leg=legs[i]||{duration:0,distance:0};
-        distM+=leg.distance; clock+=Math.round(leg.duration/60);
-        rows.push({ idx:i, eta:clock });
-        clock+=dwellMin;
-      }
-      var back=legs[ordered.length]||{duration:0,distance:0};
-      distM+=back.distance; var backEta=clock+Math.round(back.duration/60);
+      var dwellMin=num("dwell",30), travelMin=0, distM=0;
+      for(var i=0;i<legs.length;i++){ travelMin+=Math.round(legs[i].duration/60); distM+=legs[i].distance; }
       calcMode='road';
-      renderAll(rows, {totalMin:backEta-start, totalKm:distM/1000, backEta:backEta, start:start});
+      renderAll({totalMin:travelMin+dwellMin*ordered.length, totalKm:distM/1000});
       toast("도로 기반 최적 경로로 계산했습니다.");
     });
   });
@@ -437,25 +419,21 @@ function calcRoad(){
 // 임시 계산(입력 순서·가정값)
 function calcTemp(reason){
   ordered=sites.slice();
-  var legMin=num("travel",15), dwellMin=num("dwell",30), legKm=num("legkm",6);
-  var start=parseStart(), clock=start, rows=[];
-  for(var i=0;i<ordered.length;i++){ clock+=legMin; rows.push({idx:i,eta:clock}); clock+=dwellMin; }
-  var backEta=clock+legMin, legs=ordered.length+1;
+  var legMin=num("travel",15), dwellMin=num("dwell",30), legKm=num("legkm",6), legs=ordered.length+1;
   calcMode='temp';
   setModeNotice('temp', reason);
-  renderAll(rows, {totalMin:backEta-start, totalKm:legs*legKm, backEta:backEta, start:start});
+  renderAll({totalMin:legMin*legs+dwellMin*ordered.length, totalKm:legKm*legs});
 }
 
 function fmtDur(m){ m=Math.round(m); return m>=60? Math.floor(m/60)+"시간 "+(m%60)+"분" : m+"분"; }
 
-// 공통 렌더(요약 + 표)
-function renderAll(rows, meta){
+// 공통 렌더(요약 + 카드 목록)
+function renderAll(meta){
   if(calcMode==='road') setModeNotice('road');
   $("sTotal").textContent = ordered.length+"곳";
   $("sTime").textContent  = fmtDur(meta.totalMin);
   $("sDist").textContent  = meta.totalKm.toFixed(1)+"km";
-  $("sBack").textContent  = fmtTime(meta.backEta);
-  renderResult(rows);
+  renderResult();
   $("resultCard").classList.remove("hide");
   $("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -471,43 +449,34 @@ function setModeNotice(mode, reason){
   }
 }
 
-function renderResult(rows){
-  var body=$("resultBody");
-  // 전체 경로 행: 출발(HQ) + 현장들 + 복귀(HQ)
+function renderResult(){
   var html="";
-  // 출발
-  html += stopRow({seq:"출발",name:HQ.name,addr:HQ.addr,eta:fmtTime(parseStart()),hq:true,prevQ:null,curQ:placeQuery(HQ)});
+  html += stopCard({badge:"출발",disp:HQ.name,hq:true,prevQ:null,curQ:placeQuery(HQ)});
   var prevQ = placeQuery(HQ);
   for(var i=0;i<ordered.length;i++){
-    var s=ordered[i]; var curQ=placeQuery(s);
-    html += stopRow({seq:(i+1),name:s.name,addr:s.addr,eta:fmtTime(rows[i].eta),hq:false,prevQ:prevQ,curQ:curQ,warn:!isPaju(s.addr)});
+    var s=ordered[i], curQ=placeQuery(s);
+    html += stopCard({badge:String(i+1),disp:(s.addr||s.name),hq:false,prevQ:prevQ,curQ:curQ,warn:!isPaju(s.addr)});
     prevQ=curQ;
   }
-  // 복귀
-  html += stopRow({seq:"복귀",name:HQ.name,addr:HQ.addr,eta:$("sBack").textContent,hq:true,prevQ:prevQ,curQ:placeQuery(HQ)});
-  body.innerHTML=html;
+  html += stopCard({badge:"복귀",disp:HQ.name,hq:true,prevQ:prevQ,curQ:placeQuery(HQ)});
+  $("resultBody").innerHTML=html;
 }
 
-function stopRow(o){
-  var warn = o.warn ? '<div class="warn-chip">관외</div>' : '';
-  var nm = (o.name && o.name!==o.addr)
-    ? '<div class="nm">'+esc(o.name)+'</div><div class="ad">'+esc(o.addr)+'</div>'
-    : '<div class="nm">'+esc(o.addr||o.name)+'</div>';
-  var maps = '<div class="mapbtns">'+
+function stopCard(o){
+  var warn = o.warn ? ' <span class="warn-chip">관외</span>' : '';
+  var seg = o.prevQ ? '<button class="mbtn s" data-map="kr" data-from="'+esc(o.prevQ)+'" data-to="'+esc(o.curQ)+'">이전→여기 길찾기</button>' : '';
+  return '<div class="stop'+(o.hq?' hq':'')+'">'+
+    '<div class="stop-head"><span class="stop-badge">'+esc(o.badge)+'</span>'+
+      '<span class="stop-addr">'+esc(o.disp)+warn+'</span></div>'+
+    '<div class="mapbtns'+(o.prevQ?'':' two')+'">'+
       '<button class="mbtn n" data-map="ns" data-q="'+esc(o.curQ)+'"><span class="dot"></span>네이버지도</button>'+
       '<button class="mbtn k" data-map="ks" data-q="'+esc(o.curQ)+'"><span class="dot"></span>카카오맵</button>'+
-      (o.prevQ?'<button class="mbtn s" data-map="kr" data-from="'+esc(o.prevQ)+'" data-to="'+esc(o.curQ)+'">이전 → 여기 길찾기</button>':'')+
-    '</div>';
-  return '<tr>'+
-    '<td data-l="순번" class="seq">'+o.seq+'</td>'+
-    '<td data-l="현장">'+nm+warn+'</td>'+
-    '<td data-l="도착"><span class="eta">'+esc(o.eta)+'</span></td>'+
-    '<td data-l="메모"><input type="text" class="memo" placeholder="메모" style="font-size:.8rem;padding:5px 7px"></td>'+
-    '<td data-l="지도" class="no-print">'+maps+'</td>'+
-  '</tr>';
+      seg+
+    '</div>'+
+  '</div>';
 }
 
-/* 결과표 지도 버튼 동작 */
+/* 결과 지도 버튼 동작 */
 $("resultBody").addEventListener("click",function(e){
   var b=e.target.closest("button[data-map]"); if(!b) return;
   var m=b.dataset.map;
@@ -516,30 +485,8 @@ $("resultBody").addEventListener("click",function(e){
   else if(m==="kr") openUrl(kakaoRouteUrl(b.dataset.from,b.dataset.to));
 });
 
-/* ===== 복사 / 텍스트 ===== */
-/* ===== CSV / 인쇄 ===== */
-function exportCsv(){
-  var memos=document.querySelectorAll("#resultBody .memo");
-  var rows=[["순번","현장명","주소","도착예정","메모"]];
-  rows.push(["출발",HQ.name,HQ.addr,fmtTime(parseStart()),""]);
-  for(var i=0;i<ordered.length;i++){
-    rows.push([String(i+1),ordered[i].name,ordered[i].addr,
-      document.querySelectorAll("#resultBody tr")[i+1].querySelector(".eta").textContent,
-      (memos[i+1]&&memos[i+1].value)||""]);
-  }
-  rows.push(["복귀",HQ.name,HQ.addr,$("sBack").textContent,""]);
-  var csv="﻿"+rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\r\n");
-  var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
-  var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download="파주길잡이_출장계획_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
-  toast("CSV 파일을 저장했습니다.");
-}
-
 /* ===== 바인딩 ===== */
 $("calcBtn").addEventListener("click",calculate);
-$("csvBtn").addEventListener("click",exportCsv);
-$("printBtn").addEventListener("click",function(){window.print();});
 $("testKeyBtn").addEventListener("click",testKey);
 
 /* 카카오 JS 키: 붙여넣는 즉시 이 브라우저(localStorage)에 저장 */
