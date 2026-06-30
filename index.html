@@ -68,6 +68,13 @@ table.result td .nm{font-weight:600}
 table.result td .ad{font-size:.78rem;color:var(--muted);word-break:break-all}
 table.result .seq{font-weight:700;color:var(--paju2)}
 .eta{font-family:"JetBrains Mono",monospace;font-weight:700;color:var(--accent);white-space:nowrap}
+.mapbtns{display:flex;flex-wrap:wrap;gap:6px}
+.mbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 11px;font-size:.78rem;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--ink);font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.mbtn:hover{background:#f5f7f8}
+.mbtn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mbtn.n{border-color:#9fe3bf}.mbtn.n .dot{background:#03c75a}
+.mbtn.k{border-color:#ecdf7a;background:#fffdf2}.mbtn.k .dot{background:#fbe000}
+.mbtn.s{color:var(--accent);border-color:#bcd4ea}
 details.mapmenu{position:relative}
 details.mapmenu>summary{list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:.76rem;background:#fff;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 details.mapmenu>summary::-webkit-details-marker{display:none}
@@ -190,10 +197,14 @@ details.mapmenu>summary:hover{background:#f5f7f8}
 
     <div style="overflow-x:auto">
     <table class="result">
-      <thead><tr><th>순번</th><th>현장</th><th>도착</th><th>메모</th><th class="no-print">지도앱</th></tr></thead>
+      <thead><tr><th>순번</th><th>현장</th><th>도착</th><th>메모</th><th class="no-print">지도</th></tr></thead>
       <tbody id="resultBody"></tbody>
     </table>
     </div>
+
+    <p class="foot" style="text-align:left;margin-top:12px">
+      ※ 지도 버튼은 출발 전 위치 확인·실제 이동 참고용 <b>보조 기능</b>입니다(무료 공개 링크). 실제 교통상황은 지도앱에서 확인하세요.
+    </p>
 
     <div class="btn-grid no-print" style="margin-top:14px">
       <button class="btn ghost" id="csvBtn">📊 엑셀(CSV) 저장</button>
@@ -201,36 +212,7 @@ details.mapmenu>summary:hover{background:#f5f7f8}
     </div>
   </section>
 
-  <!-- ── 지도앱으로 확인 ── -->
-  <section class="card hide no-print" id="mapCard">
-    <h2>🗺️ 지도앱으로 확인 <span class="badge" style="background:#eef2f5;color:var(--muted);border-color:var(--line)">보조 기능</span></h2>
-    <div class="notice">
-      <span class="i">⚠️</span>
-      <span>네이버지도·카카오맵 연결은 출장 전 위치 확인과 실제 이동 참고를 위한 <b>보조 기능</b>입니다. 파주길잡이의 최적 방문 순서 계산 결과와 지도앱의 실제 교통상황은 다를 수 있습니다.</span>
-    </div>
-
-    <div class="section-actions">
-      <div class="btn-grid">
-        <button class="btn naver" id="naverAllBtn">네이버지도에서 순서 확인</button>
-        <button class="btn kakao" id="kakaoAllBtn">카카오맵에서 순서 확인</button>
-      </div>
-      <button class="btn ghost block" id="copyOrderBtn">📋 출장 순서 복사</button>
-      <button class="btn ghost block" id="copyMobileBtn">📱 모바일 확인용 텍스트 복사</button>
-    </div>
-
-    <div style="margin-top:16px">
-      <label class="fl">모바일 확인용 텍스트 (스마트폰으로 전송용)</label>
-      <div class="copybox"><textarea id="mobileText" readonly></textarea></div>
-    </div>
-
-    <p class="foot" style="margin-top:12px">
-      ※ 무료 공개 연결 방식(지도앱 검색·길찾기 링크)만 사용합니다. 여러 경유지를 한 번에 여는 기능은 무료 범위에서 안정적으로 지원되지 않아,
-      <b>개별 현장 열기</b>와 <b>구간별(이전→현재) 확인</b>을 중심으로 제공합니다.<br>
-      네이버지도는 무료 공개 URL이 텍스트 기반 경로(길찾기)를 안정적으로 지원하지 않아, 구간 길찾기는 <b>카카오맵</b>을, 위치 확인은 네이버·카카오 모두를 사용하세요.
-    </p>
-  </section>
-
-  <p class="foot">파주길잡이 · 파주시 관내 출장 전용 내부 업무도구 · 지도앱 연동은 무료 보조 기능입니다.</p>
+  <p class="foot">파주길잡이 · 파주시 관내 출장 전용 내부 업무도구</p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -243,7 +225,6 @@ var MAX = 15;
 var sites = [];   // {name, addr}
 var ordered = []; // 계산 결과(도로 최적순서 또는 입력 순서)
 var calcMode = 'temp';   // 'road' | 'temp'
-var lastRows = [], lastMeta = null;  // 마지막 렌더 상태(복사/CSV 재생성용)
 var KEY_LS = 'pj_kakao_key';
 var NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 var OSRM = 'https://router.project-osrm.org/trip/v1/driving/';
@@ -357,13 +338,13 @@ function renderSites(){
   else{
     box.innerHTML = sites.map(function(s,i){
       var warn = !isPaju(s.addr) ? '<span class="warn-chip">관외 주소 — 계산 대상은 관내 유지</span>' : '';
+      var body = (s.name && s.name!==s.addr)
+        ? '<div class="nm">'+esc(s.name)+'</div><div class="ad">'+esc(s.addr)+'</div>'
+        : '<div class="nm">'+esc(s.addr||s.name||'(주소 없음)')+'</div>';
       return '<div class="site-item">'+
         '<span class="num">'+(i+1)+'</span>'+
-        '<div class="body"><div class="nm">'+esc(s.name||'(명칭 없음)')+'</div>'+
-        '<div class="ad">'+esc(s.addr||'(주소 없음)')+'</div>'+warn+'</div>'+
+        '<div class="body">'+body+warn+'</div>'+
         '<div class="mini-btns">'+
-          '<button class="icon-btn" data-act="up" data-i="'+i+'" title="위로">▲</button>'+
-          '<button class="icon-btn" data-act="down" data-i="'+i+'" title="아래로">▼</button>'+
           '<button class="icon-btn" data-act="del" data-i="'+i+'" title="삭제">✕</button>'+
         '</div></div>';
     }).join("");
@@ -384,11 +365,7 @@ function addSite(){
 
 $("siteList").addEventListener("click",function(e){
   var b=e.target.closest("button"); if(!b) return;
-  var i=+b.dataset.i, act=b.dataset.act;
-  if(act==="del") sites.splice(i,1);
-  else if(act==="up" && i>0){ var t=sites[i-1]; sites[i-1]=sites[i]; sites[i]=t; }
-  else if(act==="down" && i<sites.length-1){ var t2=sites[i+1]; sites[i+1]=sites[i]; sites[i]=t2; }
-  renderSites();
+  if(b.dataset.act==="del"){ sites.splice(+b.dataset.i,1); renderSites(); }
 });
 $("addBtn").addEventListener("click",addSite);
 $("inAddr").addEventListener("keydown",function(e){ if(e.key==="Enter") addSite(); });
@@ -471,18 +448,15 @@ function calcTemp(reason){
 
 function fmtDur(m){ m=Math.round(m); return m>=60? Math.floor(m/60)+"시간 "+(m%60)+"분" : m+"분"; }
 
-// 공통 렌더(요약 + 표 + 모바일텍스트)
+// 공통 렌더(요약 + 표)
 function renderAll(rows, meta){
   if(calcMode==='road') setModeNotice('road');
   $("sTotal").textContent = ordered.length+"곳";
   $("sTime").textContent  = fmtDur(meta.totalMin);
   $("sDist").textContent  = meta.totalKm.toFixed(1)+"km";
   $("sBack").textContent  = fmtTime(meta.backEta);
-  lastRows=rows; lastMeta=meta;
   renderResult(rows);
-  buildMobileText(rows, meta);
   $("resultCard").classList.remove("hide");
-  $("mapCard").classList.remove("hide");
   $("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -490,16 +464,12 @@ function setModeNotice(mode, reason){
   var box=$("modeNotice"); if(!box) return;
   if(mode==='road'){
     box.className="notice info";
-    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 ('+esc(geoProvider())+' 좌표변환 + OSRM 도로 경로). 거리·시간은 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있으니, 출발 전 네이버/카카오에서 최종 확인하세요.</span>';
+    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 ('+esc(geoProvider())+' 좌표변환 + OSRM 도로 경로). 거리·시간은 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있으니, 출발 전 지도 버튼으로 최종 확인하세요.</span>';
   } else {
     box.className="notice";
-    box.innerHTML='<span class="i">⚠️</span><span><b>임시 계산(입력 순서·가정값)</b>으로 표시합니다'+(reason?' — '+esc(reason):'')+'. 도로 기반 최적화 원인은 ⚙️ 설정의 ‘🔌 연결 테스트’로 확인하세요. 실제 이동시간은 네이버/카카오에서 확인하세요.</span>';
+    box.innerHTML='<span class="i">⚠️</span><span><b>임시 계산(입력 순서·가정값)</b>으로 표시합니다'+(reason?' — '+esc(reason):'')+'. 도로 기반 최적화 원인은 ⚙️ 설정의 ‘🔌 연결 테스트’로 확인하세요.</span>';
   }
 }
-function distLabel(){ return calcMode==='road' ? '' : ' (가정값)'; }
-function methodLine(){ return calcMode==='road'
-  ? '도로 기반 최적 경로('+geoProvider()+' 좌표변환 + OSRM 도로 경로) · 자동차 도로 기준 추정'
-  : '파주길잡이 임시 계산(입력 순서·가정값)'; }
 
 function renderResult(rows){
   var body=$("resultBody");
@@ -520,95 +490,33 @@ function renderResult(rows){
 
 function stopRow(o){
   var warn = o.warn ? '<div class="warn-chip">관외</div>' : '';
-  var menu='';
-  if(!o.hq || o.seq==="복귀" || o.seq==="출발"){
-    menu = '<details class="mapmenu"><summary>지도앱 ▾</summary><div class="menu-pop">'+
-      '<button data-map="ns" data-q="'+esc(o.curQ)+'"><span class="dot" style="background:var(--naver)"></span>이 현장 네이버지도 열기</button>'+
-      '<button data-map="ks" data-q="'+esc(o.curQ)+'"><span class="dot" style="background:var(--kakao)"></span>이 현장 카카오맵 열기</button>'+
-      (o.prevQ?'<button data-map="kr" data-from="'+esc(o.prevQ)+'" data-to="'+esc(o.curQ)+'"><span class="dot" style="background:var(--accent)"></span>이전 → 여기 구간(카카오 길찾기)</button>':'')+
-      '<button data-map="cp" data-q="'+esc(o.curQ)+'"><span class="dot" style="background:var(--muted)"></span>이 주소 복사</button>'+
-      '</div></details>';
-  }
+  var nm = (o.name && o.name!==o.addr)
+    ? '<div class="nm">'+esc(o.name)+'</div><div class="ad">'+esc(o.addr)+'</div>'
+    : '<div class="nm">'+esc(o.addr||o.name)+'</div>';
+  var maps = '<div class="mapbtns">'+
+      '<button class="mbtn n" data-map="ns" data-q="'+esc(o.curQ)+'"><span class="dot"></span>네이버지도</button>'+
+      '<button class="mbtn k" data-map="ks" data-q="'+esc(o.curQ)+'"><span class="dot"></span>카카오맵</button>'+
+      (o.prevQ?'<button class="mbtn s" data-map="kr" data-from="'+esc(o.prevQ)+'" data-to="'+esc(o.curQ)+'">이전 → 여기 길찾기</button>':'')+
+    '</div>';
   return '<tr>'+
     '<td data-l="순번" class="seq">'+o.seq+'</td>'+
-    '<td data-l="현장"><div class="nm">'+esc(o.name)+'</div><div class="ad">'+esc(o.addr)+'</div>'+warn+'</td>'+
+    '<td data-l="현장">'+nm+warn+'</td>'+
     '<td data-l="도착"><span class="eta">'+esc(o.eta)+'</span></td>'+
     '<td data-l="메모"><input type="text" class="memo" placeholder="메모" style="font-size:.8rem;padding:5px 7px"></td>'+
-    '<td data-l="지도앱" class="no-print">'+menu+'</td>'+
+    '<td data-l="지도" class="no-print">'+maps+'</td>'+
   '</tr>';
 }
 
-/* 결과표 지도앱 메뉴 동작 */
+/* 결과표 지도 버튼 동작 */
 $("resultBody").addEventListener("click",function(e){
   var b=e.target.closest("button[data-map]"); if(!b) return;
   var m=b.dataset.map;
   if(m==="ns") openUrl(naverSearchUrl(b.dataset.q));
   else if(m==="ks") openUrl(kakaoSearchUrl(b.dataset.q));
   else if(m==="kr") openUrl(kakaoRouteUrl(b.dataset.from,b.dataset.to));
-  else if(m==="cp") copyText(b.dataset.q,"주소를 복사했습니다.");
-  var d=b.closest("details"); if(d) d.open=false;
 });
 
 /* ===== 복사 / 텍스트 ===== */
-function copyText(text,msg){
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(function(){toast(msg||"복사했습니다.");},function(){fallbackCopy(text,msg);});
-  } else fallbackCopy(text,msg);
-}
-function fallbackCopy(text,msg){
-  var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
-  document.body.appendChild(ta); ta.select();
-  try{ document.execCommand("copy"); toast(msg||"복사했습니다."); }catch(e){ toast("복사 실패 — 직접 선택해 복사하세요."); }
-  document.body.removeChild(ta);
-}
-
-function orderText(){
-  var lines=["파주길잡이 출장 순서","","1. "+HQ.name];
-  for(var i=0;i<ordered.length;i++){ lines.push((i+2)+". "+(ordered[i].addr||ordered[i].name)); }
-  lines.push("복귀: "+HQ.name,"");
-  lines.push("총 출장지 수: "+ordered.length+"곳");
-  lines.push("총 예상 소요시간: "+$("sTime").textContent);
-  lines.push("총 이동거리: "+$("sDist").textContent+distLabel());
-  lines.push("계산 방식: "+methodLine()+" · 실제 이동은 지도앱에서 최종 확인");
-  return lines.join("\n");
-}
-
-function buildMobileText(rows,meta){
-  var memos = document.querySelectorAll("#resultBody .memo");
-  var L=["📱 파주길잡이 출장 확인용","("+new Date().toLocaleDateString("ko-KR")+")",""];
-  L.push("출발 "+fmtTime(meta.start)+"  "+HQ.name+"  ["+HQ.addr+"]");
-  for(var i=0;i<ordered.length;i++){
-    var s=ordered[i];
-    var memo=(memos[i+1]&&memos[i+1].value.trim())||"____";
-    L.push("");
-    L.push((i+1)+") "+fmtTime(rows[i].eta)+" 도착예정");
-    L.push("   "+(s.name||""));
-    L.push("   주소: "+(s.addr||"(주소 없음)"));
-    L.push("   메모: "+memo);
-  }
-  L.push("");
-  L.push("복귀 "+fmtTime(meta.backEta)+"  "+HQ.name);
-  L.push("");
-  L.push("총 "+ordered.length+"곳 · 예상 "+$("sTime").textContent+" · "+$("sDist").textContent+distLabel());
-  L.push("계산: "+methodLine());
-  L.push("※ 지도앱 검색은 위 '주소'를 그대로 붙여넣으세요. 실제 이동시간은 출발 전 네이버/카카오에서 확인.");
-  $("mobileText").value=L.join("\n");
-}
-
-/* ===== 전체 순서 지도앱 확인 (무료 범위 안내형) ===== */
-function openAll(which){
-  if(!ordered.length){ return; }
-  // 무료 범위: 다중 경유지 일괄 열기 불가 → 첫 구간(시청→첫 현장) 안내 후 열기
-  var first = ordered[0];
-  if(which==="kakao"){
-    openUrl(kakaoRouteUrl(placeQuery(HQ), placeQuery(first)));
-    toast("카카오맵 길찾기는 구간 단위입니다. 표의 '지도앱' 메뉴로 구간별 확인하세요.");
-  } else {
-    openUrl(naverSearchUrl(placeQuery(first)));
-    toast("네이버는 위치 검색으로 엽니다. 표의 '지도앱' 메뉴로 현장별 확인하세요.");
-  }
-}
-
 /* ===== CSV / 인쇄 ===== */
 function exportCsv(){
   var memos=document.querySelectorAll("#resultBody .memo");
@@ -630,13 +538,6 @@ function exportCsv(){
 
 /* ===== 바인딩 ===== */
 $("calcBtn").addEventListener("click",calculate);
-$("naverAllBtn").addEventListener("click",function(){openAll("naver");});
-$("kakaoAllBtn").addEventListener("click",function(){openAll("kakao");});
-$("copyOrderBtn").addEventListener("click",function(){copyText(orderText(),"출장 순서를 복사했습니다.");});
-$("copyMobileBtn").addEventListener("click",function(){
-  if(lastMeta){ buildMobileText(lastRows, lastMeta); }   // 메모 반영 후 복사
-  copyText($("mobileText").value,"모바일 확인용 텍스트를 복사했습니다.");
-});
 $("csvBtn").addEventListener("click",exportCsv);
 $("printBtn").addEventListener("click",function(){window.print();});
 $("testKeyBtn").addEventListener("click",testKey);
