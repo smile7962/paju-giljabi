@@ -289,32 +289,56 @@ function loadKakao(){
   });
   return kakaoSDK;
 }
-// 카카오 지오코딩: 주소검색 → 실패 시 키워드(명칭) 검색
-function geocodeKakao(addr){
+// 카카오: 단일 질의 주소검색 → 실패 시 키워드(명칭) 검색
+function geocodeKakaoStr(q){
   return loadKakao().then(function(){
     return new Promise(function(resolve,reject){
       var geo=new kakao.maps.services.Geocoder();
-      geo.addressSearch(addr,function(res,status){
+      geo.addressSearch(q,function(res,status){
         if(status===kakao.maps.services.Status.OK&&res[0]){ resolve({lng:parseFloat(res[0].x),lat:parseFloat(res[0].y)}); return; }
         var ps=new kakao.maps.services.Places();
-        ps.keywordSearch(addr,function(r2,s2){
+        ps.keywordSearch(q,function(r2,s2){
           if(s2===kakao.maps.services.Status.OK&&r2[0]){ resolve({lng:parseFloat(r2[0].x),lat:parseFloat(r2[0].y)}); }
-          else reject({type:'NOT_FOUND',addr:addr});
+          else reject({type:'NOT_FOUND',addr:q});
         });
       });
     });
   });
 }
-// OpenStreetMap(Nominatim) 지오코딩: 키 불필요·브라우저 직접 호출 가능
-function geocodeNominatim(addr){
-  var url=NOMINATIM+'?format=json&limit=1&countrycodes=kr&accept-language=ko&q='+encodeURIComponent(addr);
+// OpenStreetMap(Nominatim): 단일 질의 (키 불필요·브라우저 직접 호출 가능)
+function geocodeNominatimStr(q){
+  var url=NOMINATIM+'?format=json&limit=1&countrycodes=kr&accept-language=ko&q='+encodeURIComponent(q);
   return fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(arr){
     if(arr&&arr[0]) return {lng:parseFloat(arr[0].lon),lat:parseFloat(arr[0].lat)};
-    throw {type:'NOT_FOUND',addr:addr};
+    throw {type:'NOT_FOUND',addr:q};
   });
 }
-// 활성 지오코더 선택 (카카오 키 있으면 카카오, 없으면 OSM)
-function geocode(addr){ return kakaoKey() ? geocodeKakao(addr) : geocodeNominatim(addr); }
+// 활성 제공자 단일 질의
+function geocodeStr(q){ return kakaoKey() ? geocodeKakaoStr(q) : geocodeNominatimStr(q); }
+// 지번 끝번지/상세 제거해 동·리 수준으로 간략화 (OSM 폴백용)
+function simplifyAddr(a){
+  if(!a) return "";
+  var s=a.replace(/\s*\d+(-\d+)?(번지|호)?\s*$/,"").trim();   // 끝 '10-12' 류 제거
+  return (s&&s!==a)? s : "";
+}
+// 한 지점: 주소 → 명칭 → 간략주소 순으로 시도 (한 곳 실패가 전체를 막지 않도록)
+function geocodeOne(site){
+  var cands=[];
+  if(site.addr) cands.push(site.addr);
+  if(site.name && site.name!==site.addr) cands.push(site.name);
+  var simp=simplifyAddr(site.addr||"");
+  if(simp && cands.indexOf(simp)<0) cands.push(simp);
+  if(!cands.length) cands.push(site.name||site.addr||"");
+  var i=0;
+  function next(){
+    return geocodeStr(cands[i]).catch(function(e){
+      i++;
+      if(i<cands.length) return delay(kakaoKey()?0:400).then(next);
+      throw {type:'NOT_FOUND', addr:(site.addr||site.name)};
+    });
+  }
+  return next();
+}
 function delay(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 // 좌표 배열(첫 좌표=파주시청) -> 도로 기준 최적 왕복 경로
 function osrmTrip(coords){
@@ -381,7 +405,14 @@ function calculate(){
 function geoErrMsg(e){
   if(!e) return "도로 경로 계산 실패";
   if(e.type==='SDK') return "카카오 SDK 로드 실패 — JS키/도메인 등록 확인";
-  if(e.type==='NOT_FOUND') return "좌표변환 실패("+geoProvider()+"): "+(e.addr||"");
+  if(e.type==='NOT_FOUND'){
+    if(e.list&&e.list.length){
+      var head=e.list.slice(0,2).join(", ");
+      var more=e.list.length>2? (" 외 "+(e.list.length-2)+"건") : "";
+      return "좌표변환 실패("+geoProvider()+"): "+head+more+(kakaoKey()?"":" · 카카오 키 사용 시 정확도↑");
+    }
+    return "좌표변환 실패("+geoProvider()+"): "+(e.addr||"");
+  }
   if(e.type==='OSRM') return "도로 경로(OSRM) 계산 실패";
   return "좌표·경로 호출 실패(네트워크/CORS) — 잠시 후 다시 시도";
 }
@@ -390,17 +421,18 @@ function geoErrMsg(e){
 function calcRoad(){
   var pts=[HQ].concat(sites);                 // index 0 = 파주시청
   var throttle = !kakaoKey();                 // OSM(Nominatim): 1초 1요청 정책 준수
-  var seq=Promise.resolve([]);
+  var coords=new Array(pts.length), fails=[];
+  var seq=Promise.resolve();
   pts.forEach(function(pt,idx){
-    seq=seq.then(function(acc){
+    seq=seq.then(function(){
       $("calcBtn").textContent="⏳ 좌표 변환 "+(idx+1)+"/"+pts.length+"...";
-      return geocode(placeQuery(pt)).then(function(c){
-        acc.push(c);
-        return (throttle && idx<pts.length-1) ? delay(1100).then(function(){return acc;}) : acc;
-      });
+      return geocodeOne(pt).then(function(c){ coords[idx]=c; }, function(){ if(idx>0) fails.push(pt.addr||pt.name); })
+        .then(function(){ return (throttle && idx<pts.length-1) ? delay(1100) : null; });
     });
   });
-  return seq.then(function(coords){
+  return seq.then(function(){
+    if(coords[0]==null) throw {type:'NOT_FOUND', addr:HQ.addr};   // 파주시청(기준점) 변환 실패
+    if(fails.length) throw {type:'NOT_FOUND', list:fails};
     $("calcBtn").textContent="⏳ 도로 경로 계산 중...";
     return osrmTrip(coords).then(function(trip){
       var wps=trip.waypoints, legs=trip.trips[0].legs;  // legs: HQ→v1,...,vn→HQ (방문순서)
@@ -628,7 +660,7 @@ function setKeyStatus(msg, color){ var s=$("keyStatus"); if(!s) return; s.innerH
 /* 지오코딩 연결 테스트: 활성 제공자(카카오/OSM)로 파주시청을 실제 변환해 결과 표시 */
 function testKey(){
   setKeyStatus("⏳ "+geoProvider()+" 연결 테스트 중...","var(--muted)");
-  geocode('경기도 파주시 시청로 50').then(function(c){
+  geocodeStr('경기도 파주시 시청로 50').then(function(c){
     setKeyStatus("✅ 정상! ("+geoProvider()+") 좌표 "+c.lat.toFixed(5)+", "+c.lng.toFixed(5)+
       " — 도로 기반 계산을 사용할 수 있습니다.","#1a7f4b");
   }).catch(function(e){
