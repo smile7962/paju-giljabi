@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>파주길잡이 — 관내 출장 동선</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root{
   --paju:#0b6e4f; --paju2:#0a5c42; --accent:#1565c0; --naver:#03c75a; --kakao:#fee500; --kakao-ink:#3a1d1d;
@@ -22,23 +25,19 @@ header.app p{opacity:.9;font-size:.85rem;margin-top:4px}
 .card h2{font-size:1.02rem;margin-bottom:4px;display:flex;align-items:center;gap:7px}
 .card .sub{font-size:.8rem;color:var(--muted);margin-bottom:14px}
 label.fl{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin:0 0 5px}
-input[type=text],input[type=time],input[type=number],textarea{
+input[type=text],input[type=number],select,textarea{
   width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:.92rem;font-family:inherit;color:var(--ink);background:#fff}
-input:focus,textarea:focus{outline:none;border-color:var(--paju);box-shadow:0 0 0 3px rgba(11,110,79,.12)}
-textarea{resize:vertical}
-.row{display:flex;gap:8px;align-items:flex-start}
-.row .grow{flex:1}
-.fixed-stop{display:flex;align-items:center;gap:10px;background:#f0f7f3;border:1px dashed var(--paju);border-radius:9px;padding:10px 12px;font-size:.88rem}
-.fixed-stop b{color:var(--paju2)}
-.pin{width:24px;height:24px;border-radius:50%;background:var(--paju);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
-.pin.end{background:var(--accent)}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%235b6770' stroke-width='1.6' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--paju);box-shadow:0 0 0 3px rgba(11,110,79,.12)}
+.startbox{display:flex;align-items:center;gap:8px;background:#f0f7f3;border:1px dashed var(--paju);border-radius:10px;padding:9px 11px;margin-bottom:6px}
+.startbox .pin{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;flex-shrink:0}
+.startbox select{flex:1;background-color:#fff}
+.prefix{flex:0 0 auto;display:flex;align-items:center;padding:0 11px;background:#eef2f5;border:1px solid var(--line);border-radius:9px;font-size:.85rem;font-weight:600;color:var(--muted);white-space:nowrap}
 .site-list{margin:12px 0 6px;display:flex;flex-direction:column;gap:8px}
-.site-item{display:flex;gap:8px;align-items:flex-start;background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:9px 10px}
-.site-item .num{width:24px;height:24px;border-radius:50%;background:#e8edf1;color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:700;flex-shrink:0;margin-top:3px}
+.site-item{display:flex;gap:8px;align-items:center;background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.site-item .num{width:24px;height:24px;border-radius:50%;background:#e8edf1;color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:.74rem;font-weight:700;flex-shrink:0}
 .site-item .body{flex:1;min-width:0}
 .site-item .nm{font-weight:600;font-size:.9rem;word-break:break-all}
-.site-item .ad{font-size:.78rem;color:var(--muted);word-break:break-all}
-.warn-chip{display:inline-block;background:var(--warnbg);color:var(--warn);border:1px solid #fed7aa;font-size:.68rem;padding:1px 7px;border-radius:20px;margin-top:3px}
 .mini-btns{display:flex;gap:4px;flex-shrink:0}
 .icon-btn{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:30px;font-size:.85rem;cursor:pointer;color:var(--muted)}
 .icon-btn:hover{background:#f0f2f4;color:var(--ink)}
@@ -48,11 +47,8 @@ textarea{resize:vertical}
 .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
 .btn.ghost:hover{background:#f5f7f8}
 .btn.block{width:100%}
-.btn.naver{background:var(--naver);color:#fff}
-.btn.kakao{background:var(--kakao);color:var(--kakao-ink)}
-.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.add-row{display:flex;gap:8px;margin-top:4px}
-.count{font-size:.78rem;color:var(--muted);text-align:right;margin-top:6px}
+.add-row{display:flex;gap:8px;margin-top:4px;align-items:center}
+.count{font-size:.78rem;color:var(--muted)}
 .count.full{color:var(--warn);font-weight:600}
 .notice{background:var(--warnbg);border:1px solid #fed7aa;color:var(--warn);border-radius:10px;padding:11px 13px;font-size:.8rem;margin-bottom:12px;display:flex;gap:8px}
 .notice .i{flex-shrink:0}
@@ -61,13 +57,11 @@ textarea{resize:vertical}
 .summary .box{background:#f0f7f3;border-radius:10px;padding:11px;text-align:center}
 .summary .v{font-size:1.15rem;font-weight:700;color:var(--paju2)}
 .summary .l{font-size:.7rem;color:var(--muted);margin-top:2px}
-table.result{width:100%;border-collapse:collapse;font-size:.85rem}
-table.result th,table.result td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}
-table.result th{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:#fafbfc}
-table.result td .nm{font-weight:600}
-table.result td .ad{font-size:.78rem;color:var(--muted);word-break:break-all}
-table.result .seq{font-weight:700;color:var(--paju2)}
-.eta{font-family:"JetBrains Mono",monospace;font-weight:700;color:var(--accent);white-space:nowrap}
+#map{height:300px;border-radius:12px;margin-bottom:14px;border:1px solid var(--line);z-index:0}
+.leaflet-div-icon{background:transparent;border:none}
+.mk{display:flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 6px;border-radius:13px;color:#fff;font-size:.72rem;font-weight:700;box-shadow:0 1px 5px rgba(0,0,0,.35);border:2px solid #fff;white-space:nowrap}
+.mk.hq{background:var(--accent)}
+.mk.st{background:#e05a2b}
 .stoplist{display:flex;flex-direction:column;gap:10px}
 .stop{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fff}
 .stop.hq{background:#f0f7f3;border-color:#cfe6da}
@@ -75,46 +69,22 @@ table.result .seq{font-weight:700;color:var(--paju2)}
 .stop-badge{flex:0 0 auto;min-width:30px;height:30px;padding:0 8px;border-radius:9px;background:var(--paju);color:#fff;font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center}
 .stop.hq .stop-badge{background:var(--accent);font-size:.74rem}
 .stop-addr{font-size:.95rem;font-weight:600;line-height:1.4;word-break:break-all;padding-top:4px}
-.mapbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.mapbtns.two{grid-template-columns:repeat(2,1fr)}
+.mapbtns{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .mbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 6px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--ink);font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .mbtn:active{background:#eef1f3}
 .mbtn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .mbtn.n{border-color:#9fe3bf}.mbtn.n .dot{background:#03c75a}
 .mbtn.k{border-color:#ecdf7a;background:#fffdf2}.mbtn.k .dot{background:#fbe000}
-.mbtn.s{color:var(--accent);border-color:#bcd4ea}
-details.mapmenu{position:relative}
-details.mapmenu>summary{list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:.76rem;background:#fff;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
-details.mapmenu>summary::-webkit-details-marker{display:none}
-details.mapmenu>summary:hover{background:#f5f7f8}
-.menu-pop{position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:20;min-width:200px}
-.menu-pop button{display:flex;align-items:center;gap:8px;width:100%;border:none;background:none;text-align:left;padding:8px 10px;border-radius:7px;font-size:.82rem;cursor:pointer;color:var(--ink);font-family:inherit}
-.menu-pop button:hover{background:#f0f2f4}
-.menu-pop .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.section-actions{display:flex;flex-direction:column;gap:9px}
-.copybox{position:relative}
-.copybox textarea{font-family:"JetBrains Mono","Malgun Gothic",monospace;font-size:.8rem;background:#fafbfc;min-height:150px}
+.segrow{display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap}
+.seglbl{font-size:.74rem;color:var(--muted);margin-right:2px}
+.segrow .mbtn{padding:7px 14px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
   padding:11px 18px;border-radius:24px;font-size:.85rem;opacity:0;pointer-events:none;transition:.25s;z-index:999}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:.88rem}
 .foot{font-size:.74rem;color:var(--muted);text-align:center;margin-top:8px}
 .hide{display:none!important}
-@media(max-width:620px){
-  .summary{grid-template-columns:repeat(3,1fr)}
-  .btn-grid{grid-template-columns:1fr}
-  table.result thead{display:none}
-  table.result,table.result tbody,table.result tr,table.result td{display:block;width:100%}
-  table.result tr{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:6px 4px}
-  table.result td{border:none;padding:5px 10px}
-  table.result td::before{content:attr(data-l);font-size:.68rem;color:var(--muted);display:block;text-transform:uppercase}
-}
-@media print{
-  body{background:#fff}
-  .no-print{display:none!important}
-  .card{border:none;padding:0;box-shadow:none}
-  header.app{background:#fff;color:#000;border:1px solid #000}
-}
+@media(max-width:620px){ .segrow{width:100%} }
 </style>
 </head>
 <body>
@@ -123,56 +93,44 @@ details.mapmenu>summary:hover{background:#f5f7f8}
   <header class="app">
     <h1>🧭 파주길잡이</h1>
     <p>파주시 관내 출장 동선 자동 생성 · 내부 업무용</p>
-    <span class="badge">출발/복귀: 파주시청 고정 · 경유 현장 최대 15곳</span>
+    <span class="badge">출발/복귀 지점 선택 · 경유 출장지 최대 15곳</span>
   </header>
 
   <!-- ── 입력 ── -->
-  <section class="card no-print">
+  <section class="card">
     <h2>📍 출장지 입력</h2>
-    <div class="sub">파주시 관내 출장지를 입력하세요. 출발지와 복귀지는 파주시청으로 고정됩니다.</div>
+    <div class="sub">출발·복귀 지점을 고르고, 파주시 관내 출장지 주소를 추가하세요.</div>
 
-    <div class="fixed-stop" style="margin-bottom:10px"><span class="pin">출발</span><div><b>파주시청</b> · 경기 파주시 시청로 50</div></div>
+    <label class="fl">출발 · 복귀 지점</label>
+    <div class="startbox"><span class="pin">기준</span><select id="startSel"></select></div>
 
     <div class="site-list" id="siteList"></div>
 
+    <label class="fl" style="margin-top:12px">출장지 주소 추가</label>
     <div class="add-row">
-      <div class="grow">
-        <input type="text" id="inName" placeholder="현장 명칭 (예: 운정행정복지센터)" maxlength="40">
-      </div>
+      <span class="prefix">경기도 파주시</span>
+      <input type="text" id="inAddr" style="flex:1;min-width:0" placeholder="이후 주소 (예: 문산읍 선유리 1402)" maxlength="120">
     </div>
-    <div class="add-row" style="margin-top:8px">
-      <div class="grow"><input type="text" id="inAddr" placeholder="주소 (예: 경기 파주시 ○○로 12)" maxlength="120"></div>
-      <button class="btn ghost" id="addBtn" style="flex-shrink:0">＋ 추가</button>
-    </div>
-    <div class="count" id="countLbl">현재 0 / 15곳</div>
+    <button class="btn ghost block" id="addBtn" style="margin-top:8px">＋ 출장지 추가</button>
 
-    <div class="fixed-stop" style="margin-top:6px"><span class="pin end">복귀</span><div><b>파주시청</b> · 경기 파주시 시청로 50</div></div>
-
-    <div class="add-row" style="margin-top:14px;gap:10px;align-items:center">
-      <div style="flex:1"><label class="fl" style="margin:0">현장당 체류(분)</label></div>
-      <div style="flex:0 0 110px"><input type="number" id="dwell" value="30" min="0" max="240" step="5"></div>
+    <div class="add-row" style="justify-content:space-between;margin-top:10px">
+      <button class="btn ghost" id="resetBtn" style="padding:7px 13px;font-size:.82rem">↻ 초기화</button>
+      <span class="count" id="countLbl">현재 0 / 15곳</span>
     </div>
 
     <details class="settings" style="margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:0 12px">
-      <summary style="cursor:pointer;padding:11px 0;font-size:.85rem;font-weight:600;color:var(--paju2);list-style:none">⚙️ 도로 기반 최적 경로 설정 (지오코딩)</summary>
+      <summary style="cursor:pointer;padding:11px 0;font-size:.85rem;font-weight:600;color:var(--paju2);list-style:none">⚙️ 지오코딩 설정 (고급)</summary>
       <div style="padding:0 0 14px">
         <p class="foot" style="text-align:left;margin:0 0 10px;line-height:1.6">
-          주소를 좌표로 변환한 뒤 <b>도로 기준 최적 방문순서·실거리·실시간</b>(OSRM)으로 계산합니다.<br>
-          <b>키를 비워두면 OpenStreetMap(Nominatim)</b> 으로 <b>키 없이 바로</b> 동작합니다(정확도 보통).
-          한국 주소 정확도를 높이려면 아래 <b>카카오 JavaScript 키</b>를 입력하세요.
+          주소를 좌표로 변환한 뒤 <b>도로 기준 최적 방문순서·실거리·실시간</b>(OSRM)으로 계산합니다.
+          기본으로 <b>카카오 지도</b>를 사용하며, 실패 시 자동으로 OpenStreetMap으로 시도합니다.
         </p>
-        <label class="fl">카카오 JavaScript 키 (선택 · 한국 주소 정확도 ↑)</label>
-        <input type="text" id="kakaoKey" placeholder="비워두면 OpenStreetMap으로 자동 동작" autocomplete="off" spellcheck="false">
+        <label class="fl">카카오 JavaScript 키</label>
+        <input type="text" id="kakaoKey" autocomplete="off" spellcheck="false">
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
           <button class="btn ghost" id="testKeyBtn" type="button" style="padding:8px 14px;font-size:.82rem">🔌 지오코딩 연결 테스트</button>
           <span id="keyStatus" style="font-size:.8rem;color:var(--muted)"></span>
         </div>
-        <p class="foot" style="text-align:left;margin-top:10px;line-height:1.6">
-          키는 <b>이 브라우저에만</b> 저장되며 서버로 전송·저장되지 않습니다.<br>
-          ※ 카카오 키 사용 시 <a href="https://developers.kakao.com" target="_blank" rel="noopener">Kakao Developers</a>에서
-          앱 → 플랫폼 → <b>Web 사이트 도메인</b>에 접속 주소(예: <code>https://smile7962.github.io</code>, 로컬은 <code>http://localhost</code>)를 등록해야 합니다.
-          오류 시 자동으로 임시계산(입력 순서·가정값)으로 표시됩니다.
-        </p>
         <label class="fl" style="margin-top:12px">임시계산용(좌표변환 실패 시) — 구간 이동(분) / 거리(km)</label>
         <div style="display:flex;gap:10px">
           <input type="number" id="travel" value="15" min="0" max="180" step="5">
@@ -187,21 +145,20 @@ details.mapmenu>summary:hover{background:#f5f7f8}
   <!-- ── 결과 ── -->
   <section class="card hide" id="resultCard">
     <h2>🗂️ 출장 순서 결과</h2>
-    <div class="notice" id="modeNotice">
-      <span class="i">ℹ️</span>
-      <span>계산 방식이 여기에 표시됩니다. 실제 출발 전 네이버지도 또는 카카오맵에서 최종 이동시간을 확인하세요.</span>
-    </div>
+    <div class="notice" id="modeNotice"><span class="i">ℹ️</span><span>계산 방식이 여기에 표시됩니다.</span></div>
 
     <div class="summary">
       <div class="box"><div class="v" id="sTotal">0</div><div class="l">총 출장지</div></div>
-      <div class="box"><div class="v" id="sTime">0분</div><div class="l">총 예상 소요</div></div>
+      <div class="box"><div class="v" id="sTime">0분</div><div class="l">총 주행 시간</div></div>
       <div class="box"><div class="v" id="sDist">0km</div><div class="l">총 이동거리</div></div>
     </div>
+
+    <div id="map" class="hide"></div>
 
     <div id="resultBody" class="stoplist"></div>
 
     <p class="foot" style="text-align:left;margin-top:12px">
-      ※ 지도 버튼은 위치 확인·이동 참고용 보조 기능입니다(무료 공개 링크). 실제 교통상황은 지도앱에서 확인하세요.
+      ※ 지도 버튼은 위치 확인·이동 참고용 보조 기능입니다(무료 공개 링크). ‘길찾기’는 스마트폰에서 네이버지도/카카오맵 <b>앱</b>으로 열립니다. 실제 교통상황은 지도앱에서 확인하세요.
     </p>
   </section>
 
@@ -212,54 +169,90 @@ details.mapmenu>summary:hover{background:#f5f7f8}
 
 <script>
 "use strict";
+/* ===== 기준 지점(출발·복귀) 목록 ===== */
+var CENTERS = [
+  {name:"파주시청", addr:"경기도 파주시 시청로 50"},
+  {name:"문산읍 행정복지센터", addr:"경기도 파주시 문산읍 선유리 1402"},
+  {name:"조리읍 행정복지센터", addr:"경기도 파주시 조리읍 봉일천리 188-6"},
+  {name:"법원읍 행정복지센터", addr:"경기도 파주시 법원읍 법원리 376-1"},
+  {name:"파주읍 행정복지센터", addr:"경기도 파주시 파주읍 파주리 146-1"},
+  {name:"광탄면 행정복지센터", addr:"경기도 파주시 광탄면 신산리 134-1"},
+  {name:"탄현면 행정복지센터", addr:"경기도 파주시 탄현면 축현리 877-1"},
+  {name:"월롱면 행정복지센터", addr:"경기도 파주시 월롱면 위전리 6"},
+  {name:"적성면 행정복지센터", addr:"경기도 파주시 적성면 마지리 48-1"},
+  {name:"파평면 행정복지센터", addr:"경기도 파주시 파평면 금파리 287"},
+  {name:"장단면 행정복지센터", addr:"경기도 파주시 군내면 백연리 480-1"},
+  {name:"교하동 행정복지센터", addr:"경기도 파주시 교하동 388-3"},
+  {name:"운정1동 행정복지센터", addr:"경기도 파주시 와동동 1358"},
+  {name:"운정2동 행정복지센터", addr:"경기도 파주시 와동동 1358"},
+  {name:"운정3동 행정복지센터", addr:"경기도 파주시 야당동 1022-7"},
+  {name:"운정4동 행정복지센터", addr:"경기도 파주시 야당동 54-1"},
+  {name:"운정5동 행정복지센터", addr:"경기도 파주시 문발동 602-6"},
+  {name:"운정6동 행정복지센터", addr:"경기도 파주시 동패동 2080-3"},
+  {name:"금촌1동 행정복지센터", addr:"경기도 파주시 아동동 351-5"},
+  {name:"금촌2동 행정복지센터", addr:"경기도 파주시 금촌동 1011"},
+  {name:"금촌3동 행정복지센터", addr:"경기도 파주시 아동동 291-4"}
+];
+
 /* ===== 상태 ===== */
-var HQ = { name:"파주시청", addr:"경기 파주시 시청로 50" };
 var MAX = 15;
-var sites = [];   // {name, addr}
-var ordered = []; // 계산 결과(도로 최적순서 또는 입력 순서)
-var calcMode = 'temp';   // 'road' | 'temp'
+var sites = [];          // {addr, ll}
+var ordered = [];        // 방문 순서(도로 최적 or 입력 순서)
+var seq = [];            // [출발HQ, ...ordered, 복귀HQ]
+var hqStop = null;       // 현재 기준 지점 {name,addr,ll}
+var routeGeom = null;    // OSRM 도로 경로 geometry([lng,lat] 배열)
+var calcMode = 'temp';
+var DEFAULT_KAKAO = '923bea2d923bf2e40d3ab24c3c07684c';
 var KEY_LS = 'pj_kakao_key';
 var NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 var OSRM = 'https://router.project-osrm.org/trip/v1/driving/';
-var kakaoSDK = null;   // 카카오 SDK 로드 Promise (지연 로드)
+var kakaoSDK = null;
 function kakaoKey(){ return ($("kakaoKey").value||"").trim(); }
 function geoProvider(){ return kakaoKey() ? '카카오' : 'OpenStreetMap'; }
 
 /* ===== 유틸 ===== */
 function $(id){ return document.getElementById(id); }
 function enc(s){ return encodeURIComponent((s||"").trim()); }
-function esc(s){ return (s||"").replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-function isPaju(addr){ return /파주/.test(addr||""); }
+function esc(s){ return (s||"").replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove("show");},1900); }
-
 function num(id,def){ var el=$(id); var v=el?parseFloat(el.value):NaN; return isNaN(v)?def:v; }
+function delay(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+// 주소 자동 보정: "경기도 파주시"가 없으면 앞에 붙임
+function normPrefix(s){
+  s=(s||"").replace(/\s+/g,' ').trim();
+  if(!s) return "";
+  if(/파주시/.test(s) || /^경기/.test(s)) return s;
+  return "경기도 파주시 " + s;
+}
 
-/* ===== 무료 지도앱 링크 빌더 (공개 URL only) ===== */
-// 개별 위치 검색
+/* ===== 지도앱 링크 ===== */
+function openUrl(url){ if(/^https?:/.test(url)) window.open(url,"_blank","noopener"); else window.location.href=url; }
 function naverSearchUrl(q){ return "https://map.naver.com/p/search/"+enc(q); }
 function kakaoSearchUrl(q){ return "https://map.kakao.com/?q="+enc(q); }
-// 구간 길찾기 (카카오는 출발/도착 명칭 기반 공개 URL 지원)
-function kakaoRouteUrl(from,to){ return "https://map.kakao.com/?sName="+enc(from)+"&eName="+enc(to); }
-function openUrl(url){ window.open(url,"_blank","noopener"); }
-function placeQuery(s){ return s.addr ? s.addr : s.name; } // 검색은 주소 우선
+function kakaoRouteUrl(f,t){ return "https://map.kakao.com/?sName="+enc(f)+"&eName="+enc(t); }
+// 구간 길찾기: 좌표 있으면 앱 스킴(정확), 없으면 웹 대체
+function segNaverUrl(from,to){
+  if(from.ll&&to.ll) return "nmap://route/car?slat="+from.ll.lat+"&slng="+from.ll.lng+"&sname="+enc(from.name||from.addr)+
+    "&dlat="+to.ll.lat+"&dlng="+to.ll.lng+"&dname="+enc(to.name||to.addr)+"&appname=paju-giljabi";
+  return naverSearchUrl(to.addr||to.name);
+}
+function segKakaoUrl(from,to){
+  if(from.ll&&to.ll) return "kakaomap://route?sp="+from.ll.lat+","+from.ll.lng+"&ep="+to.ll.lat+","+to.ll.lng+"&by=CAR";
+  return kakaoRouteUrl(from.addr||from.name, to.addr||to.name);
+}
 
-/* ===== 도로 기반 최적화 (지오코딩 + OSRM /trip) ===== */
-// 카카오 JS SDK 지연 로드 (services 라이브러리)
+/* ===== 지오코딩 (카카오 → OSM 폴백) + OSRM ===== */
 function loadKakao(){
   if(kakaoSDK) return kakaoSDK;
   kakaoSDK = new Promise(function(resolve,reject){
     var s=document.createElement('script');
     s.src='https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey='+encodeURIComponent(kakaoKey());
-    s.onload=function(){
-      if(window.kakao&&kakao.maps&&kakao.maps.load){ kakao.maps.load(function(){ resolve(true); }); }
-      else reject({type:'SDK'});
-    };
+    s.onload=function(){ if(window.kakao&&kakao.maps&&kakao.maps.load){ kakao.maps.load(function(){ resolve(true); }); } else reject({type:'SDK'}); };
     s.onerror=function(){ kakaoSDK=null; reject({type:'SDK'}); };
     document.head.appendChild(s);
   });
   return kakaoSDK;
 }
-// 카카오: 단일 질의 주소검색 → 실패 시 키워드(명칭) 검색
 function geocodeKakaoStr(q){
   return loadKakao().then(function(){
     return new Promise(function(resolve,reject){
@@ -268,14 +261,13 @@ function geocodeKakaoStr(q){
         if(status===kakao.maps.services.Status.OK&&res[0]){ resolve({lng:parseFloat(res[0].x),lat:parseFloat(res[0].y)}); return; }
         var ps=new kakao.maps.services.Places();
         ps.keywordSearch(q,function(r2,s2){
-          if(s2===kakao.maps.services.Status.OK&&r2[0]){ resolve({lng:parseFloat(r2[0].x),lat:parseFloat(r2[0].y)}); }
+          if(s2===kakao.maps.services.Status.OK&&r2[0]) resolve({lng:parseFloat(r2[0].x),lat:parseFloat(r2[0].y)});
           else reject({type:'NOT_FOUND',addr:q});
         });
       });
     });
   });
 }
-// OpenStreetMap(Nominatim): 단일 질의 (키 불필요·브라우저 직접 호출 가능)
 function geocodeNominatimStr(q){
   var url=NOMINATIM+'?format=json&limit=1&countrycodes=kr&accept-language=ko&q='+encodeURIComponent(q);
   return fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(arr){
@@ -283,245 +275,230 @@ function geocodeNominatimStr(q){
     throw {type:'NOT_FOUND',addr:q};
   });
 }
-// 활성 제공자 단일 질의
-function geocodeStr(q){ return kakaoKey() ? geocodeKakaoStr(q) : geocodeNominatimStr(q); }
-// 지번 끝번지/상세 제거해 동·리 수준으로 간략화 (OSM 폴백용)
-function simplifyAddr(a){
-  if(!a) return "";
-  var s=a.replace(/\s*\d+(-\d+)?(번지|호)?\s*$/,"").trim();   // 끝 '10-12' 류 제거
-  return (s&&s!==a)? s : "";
+// 활성 제공자 + 실패 시 반대편으로 한 번 더 시도
+function geocodeStr(q){
+  if(kakaoKey()) return geocodeKakaoStr(q).catch(function(){ return geocodeNominatimStr(q); });
+  return geocodeNominatimStr(q);
 }
-// 한 지점: 주소 → 명칭 → 간략주소 순으로 시도 (한 곳 실패가 전체를 막지 않도록)
-function geocodeOne(site){
-  var cands=[];
-  if(site.addr) cands.push(site.addr);
-  if(site.name && site.name!==site.addr) cands.push(site.name);
-  var simp=simplifyAddr(site.addr||"");
-  if(simp && cands.indexOf(simp)<0) cands.push(simp);
-  if(!cands.length) cands.push(site.name||site.addr||"");
+function simplifyAddr(a){ if(!a) return ""; var s=a.replace(/\s*\d+(-\d+)?(번지|호)?\s*$/,"").trim(); return (s&&s!==a)?s:""; }
+function geocodeOne(pt){
+  var cands=[]; if(pt.addr) cands.push(pt.addr);
+  var simp=simplifyAddr(pt.addr||""); if(simp) cands.push(simp);
+  if(!cands.length) cands.push(pt.name||"");
   var i=0;
-  function next(){
-    return geocodeStr(cands[i]).catch(function(e){
-      i++;
-      if(i<cands.length) return delay(kakaoKey()?0:400).then(next);
-      throw {type:'NOT_FOUND', addr:(site.addr||site.name)};
-    });
-  }
+  function next(){ return geocodeStr(cands[i]).catch(function(){ i++; if(i<cands.length) return delay(kakaoKey()?0:400).then(next); throw {type:'NOT_FOUND', addr:pt.addr||pt.name}; }); }
   return next();
 }
-function delay(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-// 좌표 배열(첫 좌표=파주시청) -> 도로 기준 최적 왕복 경로
 function osrmTrip(coords){
   var path=coords.map(function(c){return c.lng+','+c.lat;}).join(';');
-  var url=OSRM+path+'?source=first&roundtrip=true&overview=false&annotations=false';
+  var url=OSRM+path+'?source=first&roundtrip=true&overview=full&geometries=geojson&annotations=false';
   return fetch(url).then(function(r){return r.json();}).then(function(j){
-    if(!j||j.code!=='Ok'||!j.trips||!j.trips.length) throw {type:'OSRM', msg:(j&&(j.message||j.code))||'경로 계산 실패'};
+    if(!j||j.code!=='Ok'||!j.trips||!j.trips.length) throw {type:'OSRM'};
     return j;
   });
 }
 
+/* ===== 출발지 select ===== */
+function buildStartSel(){
+  $("startSel").innerHTML = CENTERS.map(function(c,i){ return '<option value="'+i+'">'+esc(c.name)+' · '+esc(c.addr)+'</option>'; }).join("");
+}
+function getHQ(){ var c=CENTERS[+$("startSel").value]||CENTERS[0]; return {name:c.name, addr:c.addr, ll:null}; }
+
 /* ===== 입력 렌더 ===== */
 function renderSites(){
   var box=$("siteList");
-  if(!sites.length){ box.innerHTML='<div class="empty">아직 추가된 현장이 없습니다. 명칭과 주소를 입력해 추가하세요.</div>'; }
-  else{
-    box.innerHTML = sites.map(function(s,i){
-      var warn = !isPaju(s.addr) ? '<span class="warn-chip">관외 주소 — 계산 대상은 관내 유지</span>' : '';
-      var body = (s.name && s.name!==s.addr)
-        ? '<div class="nm">'+esc(s.name)+'</div><div class="ad">'+esc(s.addr)+'</div>'
-        : '<div class="nm">'+esc(s.addr||s.name||'(주소 없음)')+'</div>';
-      return '<div class="site-item">'+
-        '<span class="num">'+(i+1)+'</span>'+
-        '<div class="body">'+body+warn+'</div>'+
-        '<div class="mini-btns">'+
-          '<button class="icon-btn" data-act="del" data-i="'+i+'" title="삭제">✕</button>'+
-        '</div></div>';
-    }).join("");
-  }
-  var c=$("countLbl"); c.textContent="현재 "+sites.length+" / "+MAX+"곳";
-  c.className = "count"+(sites.length>=MAX?" full":"");
+  if(!sites.length) box.innerHTML='<div class="empty">아직 추가된 출장지가 없습니다. 아래에서 주소를 입력해 추가하세요.</div>';
+  else box.innerHTML = sites.map(function(s,i){
+    return '<div class="site-item"><span class="num">'+(i+1)+'</span>'+
+      '<div class="body"><div class="nm">'+esc(s.addr)+'</div></div>'+
+      '<div class="mini-btns"><button class="icon-btn" data-act="del" data-i="'+i+'" title="삭제">✕</button></div></div>';
+  }).join("");
+  var c=$("countLbl"); c.textContent="현재 "+sites.length+" / "+MAX+"곳"; c.className="count"+(sites.length>=MAX?" full":"");
 }
-
 function addSite(){
   if(sites.length>=MAX){ toast("출장지는 최대 "+MAX+"곳까지 입력할 수 있습니다."); return; }
-  var name=$("inName").value.trim(), addr=$("inAddr").value.trim();
-  if(!name && !addr){ toast("현장 명칭 또는 주소를 입력하세요."); return; }
-  if(!addr){ toast("지도앱 검색을 위해 주소를 입력하는 것을 권장합니다."); }
-  sites.push({name:name||addr, addr:addr||name});
-  $("inName").value=""; $("inAddr").value=""; $("inName").focus();
+  var addr=normPrefix($("inAddr").value);
+  if(!addr){ toast("주소를 입력하세요."); return; }
+  sites.push({addr:addr, ll:null});
+  $("inAddr").value=""; $("inAddr").focus();
   renderSites();
 }
-
-$("siteList").addEventListener("click",function(e){
-  var b=e.target.closest("button"); if(!b) return;
-  if(b.dataset.act==="del"){ sites.splice(+b.dataset.i,1); renderSites(); }
-});
+function resetSites(){
+  sites=[]; ordered=[]; seq=[]; routeGeom=null;
+  renderSites();
+  $("resultCard").classList.add("hide");
+  $("map").classList.add("hide");
+  toast("출장지 목록을 초기화했습니다.");
+}
+$("siteList").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b&&b.dataset.act==="del"){ sites.splice(+b.dataset.i,1); renderSites(); } });
 $("addBtn").addEventListener("click",addSite);
+$("resetBtn").addEventListener("click",resetSites);
 $("inAddr").addEventListener("keydown",function(e){ if(e.key==="Enter") addSite(); });
 
-/* ===== 계산 (도로 최적화 우선, 실패 시 임시계산 폴백) ===== */
+/* ===== 계산 ===== */
 function calculate(){
   if(!sites.length){ toast("출장지를 1곳 이상 추가하세요."); return; }
   var btn=$("calcBtn"); var label=btn.textContent; btn.disabled=true;
   btn.textContent="⏳ 좌표 변환·도로 경로 계산 중...";
-  calcRoad().catch(function(e){ calcTemp(geoErrMsg(e)); })
-    .then(function(){ btn.disabled=false; btn.textContent=label; });
+  calcRoad().catch(function(e){ calcTemp(geoErrMsg(e)); }).then(function(){ btn.disabled=false; btn.textContent=label; });
 }
-
 function geoErrMsg(e){
   if(!e) return "도로 경로 계산 실패";
-  if(e.type==='SDK') return "카카오 SDK 로드 실패 — JS키/도메인 등록 확인";
+  if(e.type==='SDK') return "카카오 SDK 로드 실패";
   if(e.type==='NOT_FOUND'){
-    if(e.list&&e.list.length){
-      var head=e.list.slice(0,2).join(", ");
-      var more=e.list.length>2? (" 외 "+(e.list.length-2)+"건") : "";
-      return "좌표변환 실패("+geoProvider()+"): "+head+more+(kakaoKey()?"":" · 카카오 키 사용 시 정확도↑");
-    }
-    return "좌표변환 실패("+geoProvider()+"): "+(e.addr||"");
+    if(e.list&&e.list.length){ var h=e.list.slice(0,2).join(", "); return "좌표변환 실패: "+h+(e.list.length>2?" 외 "+(e.list.length-2)+"건":""); }
+    return "좌표변환 실패: "+(e.addr||"");
   }
   if(e.type==='OSRM') return "도로 경로(OSRM) 계산 실패";
-  return "좌표·경로 호출 실패(네트워크/CORS) — 잠시 후 다시 시도";
+  return "좌표·경로 호출 실패(네트워크)";
 }
-
-// 도로 기반 최적순서 계산
 function calcRoad(){
-  var pts=[HQ].concat(sites);                 // index 0 = 파주시청
-  var throttle = !kakaoKey();                 // OSM(Nominatim): 1초 1요청 정책 준수
+  hqStop = getHQ();
+  var pts=[hqStop].concat(sites);
+  var throttle=!kakaoKey();
   var coords=new Array(pts.length), fails=[];
-  var seq=Promise.resolve();
+  var chain=Promise.resolve();
   pts.forEach(function(pt,idx){
-    seq=seq.then(function(){
+    chain=chain.then(function(){
       $("calcBtn").textContent="⏳ 좌표 변환 "+(idx+1)+"/"+pts.length+"...";
-      return geocodeOne(pt).then(function(c){ coords[idx]=c; }, function(){ if(idx>0) fails.push(pt.addr||pt.name); })
-        .then(function(){ return (throttle && idx<pts.length-1) ? delay(1100) : null; });
+      return geocodeOne(pt).then(function(c){ coords[idx]=c; pt.ll=c; }, function(){ if(idx>0) fails.push(pt.addr||pt.name); })
+        .then(function(){ return (throttle&&idx<pts.length-1)?delay(1100):null; });
     });
   });
-  return seq.then(function(){
-    if(coords[0]==null) throw {type:'NOT_FOUND', addr:HQ.addr};   // 파주시청(기준점) 변환 실패
+  return chain.then(function(){
+    if(coords[0]==null) throw {type:'NOT_FOUND', addr:hqStop.addr};
     if(fails.length) throw {type:'NOT_FOUND', list:fails};
     $("calcBtn").textContent="⏳ 도로 경로 계산 중...";
     return osrmTrip(coords).then(function(trip){
-      var wps=trip.waypoints, legs=trip.trips[0].legs;  // legs: HQ→v1,...,vn→HQ (방문순서)
-      var arr=[];
-      for(var i=1;i<pts.length;i++){ arr.push({ site:sites[i-1], wp:wps[i].waypoint_index }); }
+      var wps=trip.waypoints, tr=trip.trips[0], legs=tr.legs;
+      var arr=[]; for(var i=1;i<pts.length;i++) arr.push({site:sites[i-1], wp:wps[i].waypoint_index});
       arr.sort(function(a,b){ return a.wp-b.wp; });
       ordered=arr.map(function(o){ return o.site; });
-      var dwellMin=num("dwell",30), travelMin=0, distM=0;
-      for(var i=0;i<legs.length;i++){ travelMin+=Math.round(legs[i].duration/60); distM+=legs[i].distance; }
+      var travelMin=0, distM=0;
+      for(var j=0;j<legs.length;j++){ travelMin+=Math.round(legs[j].duration/60); distM+=legs[j].distance; }
+      routeGeom = (tr.geometry&&tr.geometry.coordinates)||null;
       calcMode='road';
-      renderAll({totalMin:travelMin+dwellMin*ordered.length, totalKm:distM/1000});
+      renderAll({totalMin:travelMin, totalKm:distM/1000});
       toast("도로 기반 최적 경로로 계산했습니다.");
     });
   });
 }
-
-// 임시 계산(입력 순서·가정값)
 function calcTemp(reason){
+  hqStop=getHQ();
   ordered=sites.slice();
-  var legMin=num("travel",15), dwellMin=num("dwell",30), legKm=num("legkm",6), legs=ordered.length+1;
-  calcMode='temp';
-  setModeNotice('temp', reason);
-  renderAll({totalMin:legMin*legs+dwellMin*ordered.length, totalKm:legKm*legs});
+  var legMin=num("travel",15), legKm=num("legkm",6), legs=ordered.length+1;
+  routeGeom=null; calcMode='temp';
+  setModeNotice('temp',reason);
+  renderAll({totalMin:legMin*legs, totalKm:legKm*legs});
 }
-
 function fmtDur(m){ m=Math.round(m); return m>=60? Math.floor(m/60)+"시간 "+(m%60)+"분" : m+"분"; }
 
-// 공통 렌더(요약 + 카드 목록)
 function renderAll(meta){
   if(calcMode==='road') setModeNotice('road');
+  seq=[hqStop].concat(ordered).concat([hqStop]);
   $("sTotal").textContent = ordered.length+"곳";
   $("sTime").textContent  = fmtDur(meta.totalMin);
   $("sDist").textContent  = meta.totalKm.toFixed(1)+"km";
   renderResult();
+  if(calcMode==='road') renderMap(); else $("map").classList.add("hide");
   $("resultCard").classList.remove("hide");
   $("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
 }
-
-function setModeNotice(mode, reason){
+function setModeNotice(mode,reason){
   var box=$("modeNotice"); if(!box) return;
-  if(mode==='road'){
-    box.className="notice info";
-    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 ('+esc(geoProvider())+' 좌표변환 + OSRM 도로 경로). 거리·시간은 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있으니, 출발 전 지도 버튼으로 최종 확인하세요.</span>';
-  } else {
-    box.className="notice";
-    box.innerHTML='<span class="i">⚠️</span><span><b>임시 계산(입력 순서·가정값)</b>으로 표시합니다'+(reason?' — '+esc(reason):'')+'. 도로 기반 최적화 원인은 ⚙️ 설정의 ‘🔌 연결 테스트’로 확인하세요.</span>';
+  if(mode==='road'){ box.className="notice info";
+    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 ('+esc(geoProvider())+' 좌표변환 + OSRM 도로 경로). 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있습니다.</span>';
+  } else { box.className="notice";
+    box.innerHTML='<span class="i">⚠️</span><span><b>임시 계산(입력 순서)</b>으로 표시합니다'+(reason?' — '+esc(reason):'')+'. 지도 표시는 좌표변환 성공 시 나타납니다.</span>';
   }
 }
-
 function renderResult(){
   var html="";
-  html += stopCard({badge:"출발",disp:HQ.name,hq:true,prevQ:null,curQ:placeQuery(HQ)});
-  var prevQ = placeQuery(HQ);
-  for(var i=0;i<ordered.length;i++){
-    var s=ordered[i], curQ=placeQuery(s);
-    html += stopCard({badge:String(i+1),disp:(s.addr||s.name),hq:false,prevQ:prevQ,curQ:curQ,warn:!isPaju(s.addr)});
-    prevQ=curQ;
+  for(var i=0;i<seq.length;i++){
+    var isHQ=(i===0||i===seq.length-1);
+    var badge=i===0?"출발":(i===seq.length-1?"복귀":String(i));
+    var disp=isHQ?(seq[i].name+" · "+seq[i].addr):seq[i].addr;
+    var seg = i>0 ? '<div class="segrow"><span class="seglbl">길찾기(이전→여기)</span>'+
+        '<button class="mbtn n" data-act="seg-n" data-i="'+i+'"><span class="dot"></span>네이버</button>'+
+        '<button class="mbtn k" data-act="seg-k" data-i="'+i+'"><span class="dot"></span>카카오</button></div>' : '';
+    html += '<div class="stop'+(isHQ?' hq':'')+'">'+
+      '<div class="stop-head"><span class="stop-badge">'+esc(badge)+'</span><span class="stop-addr">'+esc(disp)+'</span></div>'+
+      '<div class="mapbtns">'+
+        '<button class="mbtn n" data-act="loc-n" data-i="'+i+'"><span class="dot"></span>네이버지도</button>'+
+        '<button class="mbtn k" data-act="loc-k" data-i="'+i+'"><span class="dot"></span>카카오맵</button>'+
+      '</div>'+seg+'</div>';
   }
-  html += stopCard({badge:"복귀",disp:HQ.name,hq:true,prevQ:prevQ,curQ:placeQuery(HQ)});
   $("resultBody").innerHTML=html;
 }
-
-function stopCard(o){
-  var warn = o.warn ? ' <span class="warn-chip">관외</span>' : '';
-  var seg = o.prevQ ? '<button class="mbtn s" data-map="kr" data-from="'+esc(o.prevQ)+'" data-to="'+esc(o.curQ)+'">이전→여기 길찾기</button>' : '';
-  return '<div class="stop'+(o.hq?' hq':'')+'">'+
-    '<div class="stop-head"><span class="stop-badge">'+esc(o.badge)+'</span>'+
-      '<span class="stop-addr">'+esc(o.disp)+warn+'</span></div>'+
-    '<div class="mapbtns'+(o.prevQ?'':' two')+'">'+
-      '<button class="mbtn n" data-map="ns" data-q="'+esc(o.curQ)+'"><span class="dot"></span>네이버지도</button>'+
-      '<button class="mbtn k" data-map="ks" data-q="'+esc(o.curQ)+'"><span class="dot"></span>카카오맵</button>'+
-      seg+
-    '</div>'+
-  '</div>';
-}
-
-/* 결과 지도 버튼 동작 */
 $("resultBody").addEventListener("click",function(e){
-  var b=e.target.closest("button[data-map]"); if(!b) return;
-  var m=b.dataset.map;
-  if(m==="ns") openUrl(naverSearchUrl(b.dataset.q));
-  else if(m==="ks") openUrl(kakaoSearchUrl(b.dataset.q));
-  else if(m==="kr") openUrl(kakaoRouteUrl(b.dataset.from,b.dataset.to));
+  var b=e.target.closest("button[data-act]"); if(!b) return;
+  var i=+b.dataset.i, act=b.dataset.act, cur=seq[i], prev=seq[i-1];
+  if(!cur) return;
+  if(act==="loc-n") openUrl(naverSearchUrl(cur.addr||cur.name));
+  else if(act==="loc-k") openUrl(kakaoSearchUrl(cur.addr||cur.name));
+  else if(act==="seg-n") openUrl(segNaverUrl(prev,cur));
+  else if(act==="seg-k") openUrl(segKakaoUrl(prev,cur));
 });
 
-/* ===== 바인딩 ===== */
-$("calcBtn").addEventListener("click",calculate);
-$("testKeyBtn").addEventListener("click",testKey);
+/* ===== 지도(Leaflet + OSM 타일 + OSRM 경로) ===== */
+var lmap=null, lLayers=[];
+function renderMap(){
+  var el=$("map");
+  if(typeof L==='undefined'){ el.classList.add("hide"); return; }
+  el.classList.remove("hide");
+  if(!lmap){
+    lmap=L.map('map',{scrollWheelZoom:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(lmap);
+  }
+  lLayers.forEach(function(l){ lmap.removeLayer(l); }); lLayers=[];
+  var bounds=[];
+  if(routeGeom&&routeGeom.length){
+    var ll=routeGeom.map(function(c){ return [c[1],c[0]]; });
+    lLayers.push(L.polyline(ll,{color:'#0b6e4f',weight:5,opacity:.85}).addTo(lmap));
+    bounds=ll.slice();
+  }
+  function mk(p,label,cls){
+    if(!p||!p.ll) return;
+    var ic=L.divIcon({html:'<span class="mk '+cls+'">'+esc(label)+'</span>',iconSize:[28,28],iconAnchor:[14,14]});
+    lLayers.push(L.marker([p.ll.lat,p.ll.lng],{icon:ic}).addTo(lmap));
+    bounds.push([p.ll.lat,p.ll.lng]);
+  }
+  mk(hqStop,"출발","hq");
+  ordered.forEach(function(s,i){ mk(s,String(i+1),"st"); });
+  if(bounds.length){ try{ lmap.fitBounds(bounds,{padding:[28,28]}); }catch(e){} }
+  setTimeout(function(){ lmap.invalidateSize(); if(bounds.length){ try{ lmap.fitBounds(bounds,{padding:[28,28]}); }catch(e){} } },250);
+}
 
-/* 카카오 JS 키: 붙여넣는 즉시 이 브라우저(localStorage)에 저장 */
-function setKeyStatus(msg, color){ var s=$("keyStatus"); if(!s) return; s.innerHTML=msg; s.style.color=color||"var(--muted)"; }
+/* ===== 카카오 키 저장(기본값 내장) ===== */
+function setKeyStatus(msg,color){ var s=$("keyStatus"); if(!s) return; s.innerHTML=msg; s.style.color=color||"var(--muted)"; }
 (function(){
-  var saved=""; try{ saved=localStorage.getItem(KEY_LS)||""; }catch(e){}
-  if(saved){ $("kakaoKey").value=saved; setKeyStatus("✓ 저장된 카카오 키를 불러왔습니다.","#1a7f4b"); }
+  var saved=null; try{ saved=localStorage.getItem(KEY_LS); }catch(e){}
+  if(saved===null) saved=DEFAULT_KAKAO;         // 최초: 내장 키 사용
+  $("kakaoKey").value=saved;
+  if(saved) setKeyStatus("카카오 키 적용됨. ‘🔌 연결 테스트’로 확인하세요.","#1a7f4b");
   function save(){
     try{ localStorage.setItem(KEY_LS, kakaoKey()); }catch(e){}
-    kakaoSDK=null;  // 키가 바뀌면 SDK 재로드
-    setKeyStatus(kakaoKey()
-      ? "✓ 카카오 키 저장됨. ‘🔌 연결 테스트’로 확인하세요."
-      : "키 없음 → OpenStreetMap으로 동작합니다. ‘🔌 연결 테스트’로 확인하세요.", "#1a7f4b");
+    kakaoSDK=null;
+    setKeyStatus(kakaoKey()?"✓ 저장됨.":"키 없음 → OpenStreetMap으로 동작.","#1a7f4b");
   }
-  $("kakaoKey").addEventListener("input",save);   // 붙여넣기/타이핑 즉시 저장
+  $("kakaoKey").addEventListener("input",save);
   $("kakaoKey").addEventListener("change",save);
 })();
-
-/* 지오코딩 연결 테스트: 활성 제공자(카카오/OSM)로 파주시청을 실제 변환해 결과 표시 */
 function testKey(){
   setKeyStatus("⏳ "+geoProvider()+" 연결 테스트 중...","var(--muted)");
   geocodeStr('경기도 파주시 시청로 50').then(function(c){
-    setKeyStatus("✅ 정상! ("+geoProvider()+") 좌표 "+c.lat.toFixed(5)+", "+c.lng.toFixed(5)+
-      " — 도로 기반 계산을 사용할 수 있습니다.","#1a7f4b");
+    setKeyStatus("✅ 정상! ("+geoProvider()+") 좌표 "+c.lat.toFixed(5)+", "+c.lng.toFixed(5),"#1a7f4b");
   }).catch(function(e){
-    if(e&&e.type==='SDK'){
-      setKeyStatus("❌ 카카오 SDK 로드 실패 — JS키가 맞는지, Kakao Developers에 현재 접속 도메인이 등록됐는지 확인하세요. (키를 비우면 OpenStreetMap으로 동작)","var(--warn)");
-    } else if(e&&e.type==='NOT_FOUND'){
-      setKeyStatus("⚠️ 연결은 되지만 테스트 주소를 못 찾았습니다("+geoProvider()+"). 계산은 시도됩니다.","var(--warn)");
-    } else {
-      setKeyStatus("❌ 호출 실패(네트워크). 인터넷 연결을 확인하세요. http(s) 주소에서 여세요(file:// 불가).","var(--warn)");
-    }
+    if(e&&e.type==='SDK') setKeyStatus("❌ 카카오 SDK 로드 실패 — 키/도메인/서비스 활성화 확인. (키를 비우면 OpenStreetMap으로 동작)","var(--warn)");
+    else if(e&&e.type==='NOT_FOUND') setKeyStatus("⚠️ 연결은 되나 테스트 주소를 못 찾음("+geoProvider()+").","var(--warn)");
+    else setKeyStatus("❌ 호출 실패(네트워크).","var(--warn)");
   });
 }
 
-/* 초기 렌더 */
+/* ===== 바인딩 & 초기화 ===== */
+$("calcBtn").addEventListener("click",calculate);
+$("testKeyBtn").addEventListener("click",testKey);
+buildStartSel();
 renderSites();
 </script>
 </body>
