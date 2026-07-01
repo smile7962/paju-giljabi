@@ -300,7 +300,7 @@ function osrmTrip(coords){
 
 /* ===== 출발지 select ===== */
 function buildStartSel(){
-  $("startSel").innerHTML = CENTERS.map(function(c,i){ return '<option value="'+i+'">'+esc(c.name)+' · '+esc(c.addr)+'</option>'; }).join("");
+  $("startSel").innerHTML = CENTERS.map(function(c,i){ return '<option value="'+i+'">'+esc(c.name)+'</option>'; }).join("");
 }
 function getHQ(){ var c=CENTERS[+$("startSel").value]||CENTERS[0]; return {name:c.name, addr:c.addr, ll:null}; }
 
@@ -423,10 +423,7 @@ function renderResult(){
         '<button class="mbtn k" data-act="seg-k" data-i="'+i+'"><span class="dot"></span>카카오</button></div>' : '';
     html += '<div class="stop'+(isHQ?' hq':'')+'">'+
       '<div class="stop-head"><span class="stop-badge">'+esc(badge)+'</span><span class="stop-addr">'+esc(disp)+'</span></div>'+
-      '<div class="mapbtns">'+
-        '<button class="mbtn n" data-act="loc-n" data-i="'+i+'"><span class="dot"></span>네이버지도</button>'+
-        '<button class="mbtn k" data-act="loc-k" data-i="'+i+'"><span class="dot"></span>카카오맵</button>'+
-      '</div>'+seg+'</div>';
+      seg+'</div>';
   }
   $("resultBody").innerHTML=html;
 }
