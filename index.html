@@ -92,22 +92,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--paju);bo
 
   <header class="app">
     <h1>🧭 파주길잡이</h1>
-    <p>파주시 관내 출장 동선 자동 생성 · 내부 업무용</p>
+    <p>파주시 관내 출장 동선 자동 생성</p>
     <span class="badge">출발/복귀 지점 선택 · 경유 출장지 최대 15곳</span>
   </header>
 
   <!-- ── 입력 ── -->
   <section class="card">
     <h2>📍 출장지 입력</h2>
-    <div class="sub">출발·복귀 지점을 고르고, 파주시 관내 출장지 주소를 추가하세요.</div>
+    <div class="sub">출발·복귀 지점을 고르고, 출장지 주소를 추가하세요.</div>
 
     <label class="fl">출발 · 복귀 지점</label>
     <div class="startbox"><span class="pin">기준</span><select id="startSel"></select></div>
 
     <div class="site-list" id="siteList"></div>
 
-    <label class="fl" style="margin-top:12px">출장지 주소 추가</label>
-    <div class="add-row">
+    <div class="add-row" style="margin-top:12px">
       <span class="prefix">경기도 파주시</span>
       <input type="text" id="inAddr" style="flex:1;min-width:0" placeholder="이후 주소 (예: 문산읍 선유리 1402)" maxlength="120">
     </div>
