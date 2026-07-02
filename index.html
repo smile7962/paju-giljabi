@@ -72,6 +72,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--paju);bo
 .mapbtns{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .mbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 6px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--ink);font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .mbtn:active{background:#eef1f3}
+.mbtn:disabled{opacity:.4;cursor:not-allowed;background:#f5f5f5}
+.stale-dim{opacity:.4;filter:grayscale(40%);pointer-events:none;transition:opacity .2s}
 .mbtn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .mbtn.n{border-color:#9fe3bf}.mbtn.n .dot{background:#03c75a}
 .mbtn.k{border-color:#ecdf7a;background:#fffdf2}.mbtn.k .dot{background:#fbe000}
@@ -144,9 +146,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--paju);bo
   <!-- ── 결과 ── -->
   <section class="card hide" id="resultCard">
     <h2>🗂️ 출장 순서 결과</h2>
+    <div class="notice" id="staleNotice" style="display:none"><span class="i">⚠️</span><span>출발지 또는 출장지 목록이 변경되었습니다. 아래 결과는 <b>변경 전 계산</b>입니다 — 다시 계산해 주세요.</span></div>
     <div class="notice" id="modeNotice"><span class="i">ℹ️</span><span>계산 방식이 여기에 표시됩니다.</span></div>
 
-    <div class="summary">
+    <div class="summary" id="resultStaleArea">
       <div class="box"><div class="v" id="sTotal">0</div><div class="l">총 출장지</div></div>
       <div class="box"><div class="v" id="sTime">0분</div><div class="l">총 주행 시간</div></div>
       <div class="box"><div class="v" id="sDist">0km</div><div class="l">총 이동거리</div></div>
@@ -336,6 +339,21 @@ function renderSites(){
   }).join("");
   var c=$("countLbl"); c.textContent="현재 "+sites.length+" / "+MAX+"곳"; c.className="count"+(sites.length>=MAX?" full":"");
 }
+// 계산 결과가 표시된 뒤 출발지/출장지가 바뀌면, 화면에 남은 결과가 낡은
+// 정보임을 명확히 표시한다(다시 계산 전까지 길찾기 버튼도 비활성화).
+function markStale(){
+  if($("resultCard").classList.contains("hide")) return;   // 아직 계산 결과 없음
+  $("staleNotice").style.display="flex";
+  $("resultStaleArea").classList.add("stale-dim");
+  $("resultBody").classList.add("stale-dim");
+  $("map").classList.add("stale-dim");
+}
+function clearStale(){
+  $("staleNotice").style.display="none";
+  $("resultStaleArea").classList.remove("stale-dim");
+  $("resultBody").classList.remove("stale-dim");
+  $("map").classList.remove("stale-dim");
+}
 function addSite(){
   if(sites.length>=MAX){ toast("출장지는 최대 "+MAX+"곳까지 입력할 수 있습니다."); return; }
   var addr=normPrefix($("inAddr").value);
@@ -343,18 +361,21 @@ function addSite(){
   sites.push({addr:addr, ll:null});
   $("inAddr").value=""; $("inAddr").focus();
   renderSites();
+  markStale();
 }
 function resetSites(){
   sites=[]; ordered=[]; seq=[]; routeGeom=null;
   renderSites();
+  clearStale();
   $("resultCard").classList.add("hide");
   $("map").classList.add("hide");
   toast("출장지 목록을 초기화했습니다.");
 }
-$("siteList").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b&&b.dataset.act==="del"){ sites.splice(+b.dataset.i,1); renderSites(); } });
+$("siteList").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b&&b.dataset.act==="del"){ sites.splice(+b.dataset.i,1); renderSites(); markStale(); } });
 $("addBtn").addEventListener("click",addSite);
 $("resetBtn").addEventListener("click",resetSites);
 $("inAddr").addEventListener("keydown",function(e){ if(e.key==="Enter") addSite(); });
+$("startSel").addEventListener("change",markStale);
 
 /* ===== 계산 ===== */
 function calculate(){
@@ -413,6 +434,7 @@ function calcTemp(reason){
 function fmtDur(m){ m=Math.round(m); return m>=60? Math.floor(m/60)+"시간 "+(m%60)+"분" : m+"분"; }
 
 function renderAll(meta){
+  clearStale();
   if(calcMode==='road') setModeNotice('road');
   seq=[hqStop].concat(ordered).concat([hqStop]);
   $("sTotal").textContent = ordered.length+"곳";
@@ -433,12 +455,16 @@ function setModeNotice(mode,reason){
 }
 function renderResult(){
   var html="";
+  // 좌표 기반 실제 길찾기는 road 모드(모든 지점 좌표 확보)에서만 가능.
+  // temp 모드는 좌표가 없어, 텍스트만으로 실제 길찾기를 지원하지 않는 네이버는
+  // '길찾기'라는 이름과 다르게 동작하지 않도록 버튼을 비활성화한다(카카오는 텍스트 기반 길찾기 지원).
+  var hasCoords = (calcMode==='road');
   for(var i=0;i<seq.length;i++){
     var isHQ=(i===0||i===seq.length-1);
     var badge=i===0?"출발":(i===seq.length-1?"복귀":String(i));
     var disp=isHQ?(seq[i].name+" · "+seq[i].addr):seq[i].addr;
     var seg = i>0 ? '<div class="segrow"><span class="seglbl">길찾기(이전→여기)</span>'+
-        '<button class="mbtn n" data-act="seg-n" data-i="'+i+'"><span class="dot"></span>네이버</button>'+
+        '<button class="mbtn n" data-act="seg-n" data-i="'+i+'"'+(hasCoords?'':' disabled title="좌표 미확보로 이용 불가 — 카카오 길찾기를 이용하세요"')+'><span class="dot"></span>네이버</button>'+
         '<button class="mbtn k" data-act="seg-k" data-i="'+i+'"><span class="dot"></span>카카오</button></div>' : '';
     html += '<div class="stop'+(isHQ?' hq':'')+'">'+
       '<div class="stop-head"><span class="stop-badge">'+esc(badge)+'</span><span class="stop-addr">'+esc(disp)+'</span></div>'+
@@ -447,12 +473,10 @@ function renderResult(){
   $("resultBody").innerHTML=html;
 }
 $("resultBody").addEventListener("click",function(e){
-  var b=e.target.closest("button[data-act]"); if(!b) return;
+  var b=e.target.closest("button[data-act]"); if(!b||b.disabled) return;
   var i=+b.dataset.i, act=b.dataset.act, cur=seq[i], prev=seq[i-1];
-  if(!cur) return;
-  if(act==="loc-n") openUrl(naverSearchUrl(cur.addr||cur.name));
-  else if(act==="loc-k") openUrl(kakaoSearchUrl(cur.addr||cur.name));
-  else if(act==="seg-n") openUrl(segNaverUrl(prev,cur));
+  if(!cur||!prev) return;
+  if(act==="seg-n") openUrl(segNaverUrl(prev,cur));
   else if(act==="seg-k") openUrl(segKakaoUrl(prev,cur));
 });
 
