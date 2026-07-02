@@ -157,7 +157,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--paju);bo
     <div id="resultBody" class="stoplist"></div>
 
     <p class="foot" style="text-align:left;margin-top:12px">
-      ※ 지도 버튼은 위치 확인·이동 참고용 보조 기능입니다(무료 공개 링크). ‘길찾기’는 스마트폰에서 네이버지도/카카오맵 <b>앱</b>으로 열립니다. 실제 교통상황은 지도앱에서 확인하세요.
+      ※ 지도 버튼은 위치 확인·이동 참고용 보조 기능입니다(무료 공개 링크). ‘길찾기’는 스마트폰에서는 네이버지도/카카오맵 <b>앱</b>으로, PC에서는 <b>웹 지도</b>로 열립니다. 실제 교통상황은 지도앱에서 확인하세요.
     </p>
   </section>
 
@@ -225,18 +225,29 @@ function normPrefix(s){
 }
 
 /* ===== 지도앱 링크 ===== */
+var IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 function openUrl(url){ if(/^https?:/.test(url)) window.open(url,"_blank","noopener"); else window.location.href=url; }
 function naverSearchUrl(q){ return "https://map.naver.com/p/search/"+enc(q); }
 function kakaoSearchUrl(q){ return "https://map.kakao.com/?q="+enc(q); }
 function kakaoRouteUrl(f,t){ return "https://map.kakao.com/?sName="+enc(f)+"&eName="+enc(t); }
-// 구간 길찾기: 좌표 있으면 앱 스킴(정확), 없으면 웹 대체
+function linkName(p){ return ((p.name||p.addr||"").replace(/,/g,' ')).trim(); }
+// 구간 길찾기: 모바일=앱 스킴, PC=웹 길찾기. 좌표 없으면 텍스트 기반 웹으로 폴백
 function segNaverUrl(from,to){
-  if(from.ll&&to.ll) return "nmap://route/car?slat="+from.ll.lat+"&slng="+from.ll.lng+"&sname="+enc(from.name||from.addr)+
-    "&dlat="+to.ll.lat+"&dlng="+to.ll.lng+"&dname="+enc(to.name||to.addr)+"&appname=paju-giljabi";
+  if(from.ll&&to.ll){
+    if(IS_MOBILE) return "nmap://route/car?slat="+from.ll.lat+"&slng="+from.ll.lng+"&sname="+enc(linkName(from))+
+      "&dlat="+to.ll.lat+"&dlng="+to.ll.lng+"&dname="+enc(linkName(to))+"&appname=paju-giljabi";
+    return "https://map.naver.com/index.nhn?menu=route&pathType=0"+
+      "&slng="+from.ll.lng+"&slat="+from.ll.lat+"&stext="+enc(linkName(from))+
+      "&elng="+to.ll.lng+"&elat="+to.ll.lat+"&etext="+enc(linkName(to));
+  }
   return naverSearchUrl(to.addr||to.name);
 }
 function segKakaoUrl(from,to){
-  if(from.ll&&to.ll) return "kakaomap://route?sp="+from.ll.lat+","+from.ll.lng+"&ep="+to.ll.lat+","+to.ll.lng+"&by=CAR";
+  if(from.ll&&to.ll){
+    if(IS_MOBILE) return "kakaomap://route?sp="+from.ll.lat+","+from.ll.lng+"&ep="+to.ll.lat+","+to.ll.lng+"&by=CAR";
+    return "https://map.kakao.com/link/from/"+enc(linkName(from))+","+from.ll.lat+","+from.ll.lng+
+      "/to/"+enc(linkName(to))+","+to.ll.lat+","+to.ll.lng;
+  }
   return kakaoRouteUrl(from.addr||from.name, to.addr||to.name);
 }
 
