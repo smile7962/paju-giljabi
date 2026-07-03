@@ -69,7 +69,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--paju);bo
 .stop-badge{flex:0 0 auto;min-width:30px;height:30px;padding:0 8px;border-radius:9px;background:var(--paju);color:#fff;font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center}
 .stop.hq .stop-badge{background:var(--accent);font-size:.74rem}
 .stop-addr{font-size:.95rem;font-weight:600;line-height:1.4;word-break:break-all;padding-top:4px}
-.mapbtns{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .mbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 6px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--ink);font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .mbtn:active{background:#eef1f3}
 .mbtn:disabled{opacity:.4;cursor:not-allowed;background:#f5f5f5}
@@ -209,8 +208,9 @@ var KEY_LS = 'pj_kakao_key';
 var NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 var OSRM = 'https://router.project-osrm.org/trip/v1/driving/';
 var kakaoSDK = null;
+var lastGeoProvider = null;   // 직전 계산에서 '실제로' 좌표를 만들어낸 제공자(폴백 여부 반영)
 function kakaoKey(){ return ($("kakaoKey").value||"").trim(); }
-function geoProvider(){ return kakaoKey() ? '카카오' : 'OpenStreetMap'; }
+function geoProvider(){ return kakaoKey() ? '카카오' : 'OpenStreetMap'; }  // 시도 예정 제공자(성공 보장 아님)
 
 /* ===== 유틸 ===== */
 function $(id){ return document.getElementById(id); }
@@ -271,10 +271,10 @@ function geocodeKakaoStr(q){
     return new Promise(function(resolve,reject){
       var geo=new kakao.maps.services.Geocoder();
       geo.addressSearch(q,function(res,status){
-        if(status===kakao.maps.services.Status.OK&&res[0]){ resolve({lng:parseFloat(res[0].x),lat:parseFloat(res[0].y)}); return; }
+        if(status===kakao.maps.services.Status.OK&&res[0]){ resolve({lng:parseFloat(res[0].x),lat:parseFloat(res[0].y),provider:'카카오'}); return; }
         var ps=new kakao.maps.services.Places();
         ps.keywordSearch(q,function(r2,s2){
-          if(s2===kakao.maps.services.Status.OK&&r2[0]) resolve({lng:parseFloat(r2[0].x),lat:parseFloat(r2[0].y)});
+          if(s2===kakao.maps.services.Status.OK&&r2[0]) resolve({lng:parseFloat(r2[0].x),lat:parseFloat(r2[0].y),provider:'카카오'});
           else reject({type:'NOT_FOUND',addr:q});
         });
       });
@@ -294,7 +294,7 @@ function geocodeNominatimStr(q){
   return nominatimGate().then(function(){
     var url=NOMINATIM+'?format=json&limit=1&countrycodes=kr&accept-language=ko&q='+encodeURIComponent(q);
     return fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(arr){
-      if(arr&&arr[0]) return {lng:parseFloat(arr[0].lon),lat:parseFloat(arr[0].lat)};
+      if(arr&&arr[0]) return {lng:parseFloat(arr[0].lon),lat:parseFloat(arr[0].lat),provider:'OpenStreetMap'};
       throw {type:'NOT_FOUND',addr:q};
     });
   });
@@ -418,6 +418,12 @@ function calcRoad(){
       for(var j=0;j<legs.length;j++){ travelMin+=Math.round(legs[j].duration/60); distM+=legs[j].distance; }
       routeGeom = (tr.geometry&&tr.geometry.coordinates)||null;
       calcMode='road';
+      // 실제로 어느 지오코더가 좌표를 만들어냈는지 집계(카카오 키가 있어도
+      // 일부/전체가 OpenStreetMap 폴백으로 처리됐을 수 있음 — 표시가 실상과
+      // 달라지지 않도록 실제 사용 제공자를 기록한다).
+      var provSet={}; coords.forEach(function(c){ if(c&&c.provider) provSet[c.provider]=true; });
+      var provKeys=Object.keys(provSet);
+      lastGeoProvider = provKeys.length===1 ? provKeys[0] : (provKeys.length>1 ? provKeys.join('+')+' 혼합' : geoProvider());
       renderAll({totalMin:travelMin, totalKm:distM/1000});
       toast("도로 기반 최적 경로로 계산했습니다.");
     });
@@ -448,7 +454,9 @@ function renderAll(meta){
 function setModeNotice(mode,reason){
   var box=$("modeNotice"); if(!box) return;
   if(mode==='road'){ box.className="notice info";
-    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 ('+esc(geoProvider())+' 좌표변환 + OSRM 도로 경로). 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있습니다.</span>';
+    var provLabel = lastGeoProvider || geoProvider();
+    var provNote = (kakaoKey() && provLabel.indexOf('카카오')!==0) ? ' — 카카오 좌표변환 실패로 OpenStreetMap이 대신 사용됨' : '';
+    box.innerHTML='<span class="i">🛰️</span><span><b>도로 기반 최적 경로</b>로 계산했습니다 ('+esc(provLabel)+' 좌표변환 + OSRM 도로 경로'+provNote+'). 자동차 도로 기준 추정치이며 실제 교통상황과 다를 수 있습니다.</span>';
   } else { box.className="notice";
     box.innerHTML='<span class="i">⚠️</span><span><b>임시 계산(입력 순서)</b>으로 표시합니다'+(reason?' — '+esc(reason):'')+'. 지도 표시는 좌표변환 성공 시 나타납니다.</span>';
   }
@@ -527,7 +535,14 @@ function setKeyStatus(msg,color){ var s=$("keyStatus"); if(!s) return; s.innerHT
 function testKey(){
   setKeyStatus("⏳ "+geoProvider()+" 연결 테스트 중...","var(--muted)");
   geocodeStr('경기도 파주시 시청로 50').then(function(c){
-    setKeyStatus("✅ 정상! ("+geoProvider()+") 좌표 "+c.lat.toFixed(5)+", "+c.lng.toFixed(5),"#1a7f4b");
+    // geocodeStr는 카카오 실패 시 OpenStreetMap으로 조용히 폴백하므로, 겉보기 제공자(geoProvider)가
+    // 아니라 실제로 응답을 만들어낸 제공자(c.provider)를 표시해야 오진단을 막을 수 있다.
+    var actual = c.provider || geoProvider();
+    if(kakaoKey() && actual!=='카카오'){
+      setKeyStatus("⚠️ 카카오 연결 실패 — OpenStreetMap으로 대체되어 동작 중입니다. 카카오 키·도메인 등록·서비스 활성화를 확인하세요.","var(--warn)");
+    } else {
+      setKeyStatus("✅ 정상! ("+actual+") 좌표 "+c.lat.toFixed(5)+", "+c.lng.toFixed(5),"#1a7f4b");
+    }
   }).catch(function(e){
     if(e&&e.type==='SDK') setKeyStatus("❌ 카카오 SDK 로드 실패 — 키/도메인/서비스 활성화 확인. (키를 비우면 OpenStreetMap으로 동작)","var(--warn)");
     else if(e&&e.type==='NOT_FOUND') setKeyStatus("⚠️ 연결은 되나 테스트 주소를 못 찾음("+geoProvider()+").","var(--warn)");
