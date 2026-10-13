@@ -62,6 +62,13 @@ textarea{resize:vertical;min-height:160px}
 .leaflet-container{font:13px "Noto Sans KR","Malgun Gothic",sans-serif}
 .pin{width:26px;height:26px;border:2px solid #fff;box-shadow:0 0 0 1px #334155;border-radius:50%;background:var(--blue);display:grid;place-items:center;color:#fff;font-weight:700}
 .pin.home{background:var(--navy)}
+.qr-dialog{border:1px solid #cbd5e1;border-radius:14px;box-shadow:0 12px 60px #0f172a44;max-width:min(460px,calc(100vw - 24px));padding:20px}
+.qr-dialog::backdrop{background:#0f172a99}.qr-dialog .qr-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.qr-head h2{font-size:18px;color:var(--navy);margin:0}.qr-dialog p{font-size:13px;line-height:1.65}
+.qr-image{display:grid;place-items:center;min-height:240px;margin:16px 0}
+.qr-image canvas,.qr-image img{max-width:100%}.qr-hint{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.qr-buttons{display:flex;gap:8px;flex-wrap:wrap}.qr-buttons>*{flex:1;text-align:center;text-decoration:none}
+.print-only{display:none}
 @media(max-width:1150px){
   .workspace{grid-template-columns: minmax(220px,32fr) minmax(0,68fr);grid-template-rows:minmax(360px,1fr) auto}
   .itinerary-panel{grid-column:1 / -1;max-height:250px}
@@ -90,7 +97,16 @@ textarea{resize:vertical;min-height:160px}
   body,.app,.workspace{height:auto;display:block;background:#fff}
   .workspace{padding:0}
   .map-panel,.itinerary-panel{border:0;page-break-inside:avoid;max-height:none}
-  #map{height:130mm!important}
+  .map-panel{display:grid;grid-template-columns:minmax(0,2fr) 52mm;gap:5mm;align-items:start}
+  .map-panel .panel-heading,.map-panel .map-summary{display:none}
+  #map{height:90mm!important;grid-column:1}
+  #printQrPanel{display:flex;grid-column:2;flex-direction:column;align-items:center;gap:3mm;font-size:11px;text-align:center}
+  #printQrPanel h2{font-size:16px;margin:0}
+  #printQrPanel p{margin:0}
+  #printQr{width:43mm;height:43mm;object-fit:contain}
+  #printQr:not([src]){display:none}
+  #printQrPanel small{font-size:9px;color:#475569}
+  .map-panel,.itinerary-panel{break-inside:avoid}
   .itinerary-panel .panel-content{overflow:visible}
   .itinerary{display:block}
   .itinerary li{margin-bottom:6px}
