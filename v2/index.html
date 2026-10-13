@@ -61,6 +61,13 @@
           <button type="button" id="fitMap" class="btn small">경로 전체보기</button>
         </div>
         <div id="map" role="region" aria-label="지도"></div>
+        <div class="print-only" id="printQrPanel">
+          <h2>출장경로표</h2>
+          <p id="printDate"></p>
+          <img id="printQr" alt="모바일 출장 시작 QR" />
+          <p>모바일 출장 시작 QR</p>
+          <small>방문순서·예상거리·이동시간은 계획 단계의 추정치입니다.</small>
+        </div>
         <div class="map-summary" id="summary" aria-live="polite">
           <span>총 이동거리 <strong id="totalKm">—</strong></span>
           <span>예상 이동시간 <strong id="totalTime">—</strong></span>
