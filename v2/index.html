@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="./style.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="./trip.js" defer></script>
+  <script src="./geocode.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
@@ -37,15 +38,15 @@
         <div class="panel-content">
           <div class="notice">
             <strong>현재 연결된 기능</strong>
-            주소 검색과 실제 도로망 경로계산을 제공합니다. Gemini 자연어 분석과 시간제약 최적화는 다음 단계에서 연결합니다.
+            카카오 장소명·주소 검색과 OpenStreetMap 보조 검색, 실제 도로망 경로계산을 제공합니다. Gemini 자연어 분석과 시간제약 최적화는 다음 단계에서 연결합니다.
           </div>
           <label for="start">출발 · 복귀지</label>
           <input id="start" type="text" value="경기도 파주시청" autocomplete="street-address">
           <label for="locations">방문지 <small>한 줄에 한 곳, 최대 15곳</small></label>
-          <textarea id="locations" rows="9" placeholder="경기도 파주시 헤이리 예술마을&#10;경기도 파주시 임진각 관광지"></textarea>
+          <textarea id="locations" rows="9" placeholder="경기도 파주시 문산읍 임진각로 177&#10;헤이리 예술마을"></textarea>
           <div class="row between">
             <button type="button" class="btn" id="sample">예시 입력</button>
-            <span class="subtle">주소는 계산 전 확인합니다</span>
+            <span class="subtle">시설명과 도로명주소 입력 가능</span>
           </div>
           <label class="check"><input type="checkbox" id="keepOrder"> 입력한 방문순서 유지</label>
           <p class="help">해제하면 도로망 기준 최적 순서를 계산합니다. 거리·시간은 실시간 교통정보가 아닌 OSRM 추정치입니다.</p>

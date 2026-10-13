@@ -7,11 +7,8 @@
 
 const $ = id => document.getElementById(id);
 const MAX_STOPS = 15;
-const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 const OSRM = "https://router.project-osrm.org";
-const geoCache = new Map();
 const mapState = { map: null, path: null, pins: [] };
-let nextGeoRequest = 0;
 let running = false;
 let confirmedTrip = null;
 
@@ -19,9 +16,6 @@ function cleanLines(text) {
   return text.split(/\r?\n/)
     .map(s => s.replace(/^\s*(?:\d+\s*[.)-]\s*)?/, "").trim())
     .filter(Boolean);
-}
-function uniqueLines(lines) {
-  return [...new Set(lines)];
 }
 function formatDuration(seconds) {
   const mins = Math.round(seconds / 60);
@@ -31,43 +25,11 @@ function setStatus(message, kind = "") {
   $("status").textContent = message;
   $("status").className = "status" + (kind ? " " + kind : "");
 }
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function shortLabel(s) { return s.length > 40 ? s.slice(0, 37) + "…" : s; }
 
-/* Nominatim 공개 API의 순차 요청 간격(최소 1.1초) 준수 */
-async function searchAddress(query) {
-  const now = Date.now();
-  await sleep(Math.max(0, nextGeoRequest - now));
-  nextGeoRequest = Date.now() + 1150;
-  const params = new URLSearchParams({
-    format: "json", limit: "1", countrycodes: "kr",
-    "accept-language": "ko", q: query
-  });
-  const response = await fetch(NOMINATIM + "?" + params);
-  if (!response.ok) throw new Error("주소검색 서버 오류 (" + response.status + ")");
-  const results = await response.json();
-  if (!results.length) return null;
-  return { lat: Number(results[0].lat), lng: Number(results[0].lon), label: query };
-}
-async function geocode(query) {
-  if (geoCache.has(query)) return geoCache.get(query);
-  const candidates = [query];
-  if (!/파주|경기도/.test(query)) {
-    candidates.push("경기도 파주시 " + query);
-  } else if (/^파주시/.test(query)) {
-    candidates.push("경기도 " + query);
-  }
-  for (const term of uniqueLines(candidates)) {
-    const point = await searchAddress(term);
-    if (point) {
-      if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) break;
-      point.label = query;
-      geoCache.set(query, point);
-      return point;
-    }
-  }
-  throw new Error("주소를 찾지 못했습니다: " + query + " (주소를 구체적으로 입력하세요)");
-}
+/* 카카오 주소/장소 검색 → OpenStreetMap 폴백은 geocode.js에서 담당 */
+const geocode = query => PajuGeo.geocode(query);
+
 function coordinatePath(points) {
   return points.map(p => p.lng + "," + p.lat).join(";");
 }
@@ -210,8 +172,8 @@ async function calculate() {
 $("calculate").addEventListener("click", calculate);
 $("sample").addEventListener("click", () => {
   $("start").value = "파주시청";
-  $("locations").value = "헤이리 예술마을\n임진각 관광지\n운정호수공원";
-  setStatus("예시 출장지 3개소를 입력했습니다. 실제 주소 검색 결과를 확인하세요.");
+  $("locations").value = "경기도 파주시 탄현면 헤이리마을길 82-105\n경기도 파주시 문산읍 임진각로 177\n경기도 파주시 가온로 184";
+  setStatus("실제 소재지의 도로명주소 3개소를 입력했습니다. 경로계산을 실행하세요.");
 });
 $("fitMap").addEventListener("click", () => {
   if (mapState.path) mapState.map.fitBounds(mapState.path.getBounds(), { padding: [26, 26] });
