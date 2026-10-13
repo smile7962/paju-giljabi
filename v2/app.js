@@ -1,6 +1,6 @@
-/* 출장ON AI v0.1
+/* 출장ON AI v0.2
  * 기능 1: 주소 검색 → OSRM 도로경로 → Leaflet 표시
- * 실제 AI·QR·사진·복명서는 별도 단계에서 연결한다.
+ * QR 인계 연결. AI·복명서는 별도 단계에서 연결한다.
  * 개인정보/비공개 출장정보를 공용 지도 API에 입력하지 말 것.
  */
 "use strict";
@@ -13,6 +13,7 @@ const geoCache = new Map();
 const mapState = { map: null, path: null, pins: [] };
 let nextGeoRequest = 0;
 let running = false;
+let confirmedTrip = null;
 
 function cleanLines(text) {
   return text.split(/\r?\n/)
@@ -173,6 +174,8 @@ async function calculate() {
   running = true;
   $("calculate").disabled = true;
   $("print").disabled = true;
+  $("confirm").disabled = true;
+  confirmedTrip = null;
   try {
     ensureMap();
     setStatus("출발지 주소 확인 중…");
@@ -190,6 +193,10 @@ async function calculate() {
     $("totalTime").textContent = formatDuration(result.seconds);
     setStatus("계산 완료 · " + (result.visits.length) + "개소 / OSRM 도로망 추정치. 방문 시간약속·우선방문 제약은 아직 반영하지 않습니다.", "success");
     $("print").disabled = false;
+    const simple = p => [p.label, +p.lat.toFixed(6), +p.lng.toFixed(6)];
+    const tripId = "t-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+    confirmedTrip = [1, tripId, simple(origin), result.visits.map(simple)];
+    $("confirm").disabled = false;
   } catch (error) {
     setStatus(error.message || "계산 중 오류가 발생했습니다.", "error");
     $("totalKm").textContent = "—";
@@ -210,3 +217,56 @@ $("fitMap").addEventListener("click", () => {
 });
 $("print").addEventListener("click", () => window.print());
 ensureMap();
+
+
+/* PC에서 계획 확정 → QR로 휴대폰 인계 */
+function confirmAndShare() {
+  if (!confirmedTrip) return;
+  let link;
+  try {
+    const encoded = TripIO.encode(confirmedTrip);
+    link = TripIO.locationLink(encoded, location.href);
+    try { localStorage.setItem("tripon-last-plan", JSON.stringify(confirmedTrip)); }
+    catch (_) { /* 개인 브라우징/저장공간 제한 */ }
+  } catch (err) {
+    setStatus("출장계획 인계 실패: " + err.message, "error");
+    return;
+  }
+
+  const qrBox = $("qrcode");
+  qrBox.replaceChildren();
+  $("openMobile").href = link;
+  $("copyLink").disabled = false;
+  const isPublic = location.protocol === "https:" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const hint = $("qrHint");
+  if (!isPublic) {
+    hint.textContent = "현재 로컬 실행 중입니다. 같은 브라우저에서 미리보기는 가능하지만 휴대폰 QR 인계는 HTTPS 배포 후 사용할 수 있습니다.";
+  } else if (link.length > 1900) {
+    hint.textContent = "방문지 정보가 길어 QR 생성에 적합하지 않습니다. 방문지명을 줄이거나 출장지를 나누어 주세요.";
+  } else if (typeof QRCode !== "function") {
+    hint.textContent = "QR 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.";
+  } else {
+    try {
+      new QRCode(qrBox, {
+        text: link, width: 240, height: 240,
+        colorDark: "#102a56", colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.L
+      });
+      hint.textContent = "QR 생성 완료 · 모바일에서 현재 방문순서가 복원됩니다. QR에는 민감정보를 담지 마세요.";
+    } catch (_) {
+      qrBox.replaceChildren();
+      hint.textContent = "QR 생성에 실패했습니다. 방문지명을 줄이고 다시 시도하세요.";
+    }
+  }
+  $("qrDialog").showModal();
+}
+$("confirm").addEventListener("click", confirmAndShare);
+$("qrClose").addEventListener("click", () => $("qrDialog").close());
+$("copyLink").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("openMobile").href);
+    $("qrHint").textContent = "모바일 링크를 복사했습니다. 링크를 공유할 때 출장지 정보가 노출되지 않도록 주의하세요.";
+  } catch (_) {
+    $("qrHint").textContent = "링크 복사가 차단되었습니다. HTTPS 환경에서 다시 시도하세요.";
+  }
+});
