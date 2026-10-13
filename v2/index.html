@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./style.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="./trip.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -23,7 +25,7 @@
         <span>2 현장출장</span>
         <span>3 출장복명</span>
       </nav>
-      <span class="version">v0.1 · 실제 경로계산</span>
+      <span class="version">v0.2 · 모바일 인계</span>
     </header>
 
     <main class="workspace">
@@ -76,10 +78,21 @@
         </div>
         <div class="panel-footer">
           <button type="button" class="btn" id="print" disabled>경로표 인쇄</button>
-          <button type="button" class="btn primary" disabled title="다음 개발 단계에서 연결">출장계획 확정 · QR (예정)</button>
+          <button type="button" class="btn primary" id="confirm" disabled>출장계획 확정 · QR</button>
         </div>
       </section>
     </main>
+    <dialog id="qrDialog" class="qr-dialog" aria-labelledby="qrTitle">
+      <div class="qr-head"><h2 id="qrTitle">모바일 출장 인계</h2><button class="btn small" id="qrClose" type="button">닫기</button></div>
+      <p>아래 QR을 휴대폰 카메라로 스캔하면 확정된 출장지가 열립니다.</p>
+      <div id="qrcode" class="qr-image" aria-label="모바일 출장 QR코드"></div>
+      <p id="qrHint" class="qr-hint" role="status"></p>
+      <div class="qr-buttons">
+        <button class="btn" id="copyLink" type="button">모바일 링크 복사</button>
+        <a class="btn primary" id="openMobile" href="#" target="_blank" rel="noopener">이 브라우저에서 미리보기</a>
+      </div>
+      <p class="help">QR에는 계획된 방문지와 좌표가 포함됩니다. 민원인 정보나 비공개 업무내용을 넣지 마세요. 배포 전 로컬 파일·localhost에서 생성한 QR은 휴대폰에서 열리지 않습니다.</p>
+    </dialog>
   </div>
 </body>
 </html>
