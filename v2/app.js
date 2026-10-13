@@ -176,6 +176,7 @@ async function calculate() {
   $("print").disabled = true;
   $("confirm").disabled = true;
   confirmedTrip = null;
+  $("printQr").removeAttribute("src");
   try {
     ensureMap();
     setStatus("출발지 주소 확인 중…");
@@ -252,7 +253,10 @@ function confirmAndShare() {
         colorDark: "#102a56", colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.L
       });
-      hint.textContent = "QR 생성 완료 · 모바일에서 현재 방문순서가 복원됩니다. QR에는 민감정보를 담지 마세요.";
+      const canvas = qrBox.querySelector("canvas");
+      if (canvas) $("printQr").src = canvas.toDataURL("image/png");
+      $("printDate").textContent = "계획 확정: " + new Date().toLocaleDateString("ko-KR");
+      hint.textContent = "QR 생성 완료 · 경로표 인쇄에도 QR이 포함됩니다. QR에는 민감정보를 담지 마세요.";
     } catch (_) {
       qrBox.replaceChildren();
       hint.textContent = "QR 생성에 실패했습니다. 방문지명을 줄이고 다시 시도하세요.";
