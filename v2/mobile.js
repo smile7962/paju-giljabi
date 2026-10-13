@@ -67,9 +67,11 @@ function sanitize(value) {
 }
 function extFor(file) {
   const byMime = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif" };
+  if (file.type && !byMime[file.type]) throw new Error("지원하지 않는 사진 형식입니다.");
   if (byMime[file.type]) return byMime[file.type];
   const match = file.name && file.name.match(/\.(jpe?g|png|webp|heic|heif)$/i);
-  return match ? match[1].toLowerCase() : "jpg";
+  if (!match) throw new Error("사진 형식을 확인할 수 없습니다.");
+  return match[1].toLowerCase();
 }
 function buildName(stop, seq, file) {
   return trip.id + "_" + stop.id + "_" + sanitize(stop.name) + "_" + String(seq).padStart(2, "0") + "." + extFor(file);
@@ -80,7 +82,9 @@ function navLinks(stop) {
   $("kakaoNav").href = "https://map.kakao.com/link/to/" + dest + "," + stop.lat + "," + stop.lng;
   const app = encodeURIComponent(location.origin + location.pathname);
   $("naverNav").href = "nmap://route/car?dlat=" + stop.lat + "&dlng=" + stop.lng + "&dname=" + dest + "&appname=" + app;
-  $("tmapNav").href = "tmap://route?goalname=" + dest + "&goalx=" + stop.lng + "&goaly=" + stop.lat;
+  $("tmapNav").href = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    ? "tmap://route?rGoName=" + dest + "&rGoX=" + stop.lng + "&rGoY=" + stop.lat
+    : "tmap://route?goalname=" + dest + "&goalx=" + stop.lng + "&goaly=" + stop.lat;
 }
 function makePin(n, home) {
   return L.divIcon({
@@ -213,28 +217,30 @@ async function saveFiles(files) {
   if (!db) return notice("휴대폰 사진 저장소를 열지 못했습니다. 사진 촬영을 진행하지 마세요.");
   const stop = current();
   let seq = Math.max(0, ...photos.filter(p => p.stopId === stop.id).map(p => p.seq));
+  let message = "";
   for (const file of files) {
-    if (!file.type.startsWith("image/") || file.size > 25 * 1024 * 1024) {
-      notice("사진 파일만 지원하며 한 장당 25MB 이하만 저장할 수 있습니다.");
+    if ((!file.type && !file.name) || file.size > 25 * 1024 * 1024) {
+      message = "사진 한 장당 25MB 이하만 저장할 수 있습니다.";
       continue;
     }
-    seq++;
-    const record = {
-      key: trip.id + "|" + stop.id + "|" + seq,
-      tripId: trip.id, stopId: stop.id, seq,
-      name: buildName(stop, seq, file),
-      type: file.type, blob: file, capturedAt: new Date().toISOString()
-    };
     try {
+      const name = buildName(stop, seq + 1, file);
+      seq++;
+      const record = {
+        key: trip.id + "|" + stop.id + "|" + seq,
+        tripId: trip.id, stopId: stop.id, seq,
+        name, type: file.type, blob: file, capturedAt: new Date().toISOString()
+      };
       await dbOperation("put", record);
       photos.push(record);
-      notice("휴대폰 사진 저장 완료: " + record.name);
-    } catch (_) {
-      notice("사진 저장 실패: 휴대폰 저장공간·브라우저 설정을 확인하세요. 다른 파일로 전송하기 전 이 사진을 별도로 저장하세요.");
+      message = "휴대폰 사진 저장 완료: " + record.name;
+    } catch (err) {
+      message = "사진 저장 실패: " + (err.message || "저장공간·브라우저 설정 확인 필요");
       break;
     }
   }
   renderPhotos();
+  if (message) notice(message);
 }
 async function sharePhotos() {
   if (!photos.length) return;
