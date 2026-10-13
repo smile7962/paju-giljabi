@@ -155,7 +155,7 @@ function showMap(origin, result) {
       iconAnchor: [13, 13]
     });
     const pin = L.marker([point.lat, point.lng], { icon })
-      .bindPopup((isHome ? "출발·복귀: " : "방문 " + index + ": ") + shortLabel(point.label))
+      .bindPopup(document.createTextNode((isHome ? "출발·복귀: " : "방문 " + index + ": ") + shortLabel(point.label)))
       .addTo(mapState.map);
     mapState.pins.push(pin);
   });
