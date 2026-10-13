@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#155eef">
+  <title>출장ON AI | 현장출장</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./mobile.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="./trip.js" defer></script>
+  <script src="./mobile.js" defer></script>
+</head>
+<body>
+  <div class="mobile-app">
+    <header class="mobile-header">
+      <strong>↗ 출장ON <em>AI</em></strong>
+      <span>현장출장 · <span id="progress">—</span></span>
+    </header>
+    <div id="errorScreen" class="error-screen" hidden>
+      <h1>출장계획을 불러올 수 없습니다</h1>
+      <p id="errorText">사무실에서 생성한 QR코드를 다시 확인하세요.</p>
+    </div>
+    <main id="mobileMain" hidden>
+      <div class="dest">
+        <small id="phaseLabel">다음 목적지</small>
+        <h1 id="destination">—</h1>
+        <p id="source">출장지 확인</p>
+      </div>
+      <section id="fieldMap" aria-label="방문지 지도"></section>
+      <div id="mapNote" class="map-note">계획된 이동구간을 표시합니다. 실시간 길안내는 외부 내비를 이용하세요.</div>
+      <section class="navbox" id="navbox">
+        <h2>목적지 길찾기</h2>
+        <div class="navbuttons">
+          <a id="kakaoNav" target="_blank" rel="noopener">카카오맵</a>
+          <a id="naverNav">네이버지도 앱</a>
+          <a id="tmapNav">T맵 앱</a>
+        </div>
+        <button class="primary full" type="button" id="arrive">현장 도착</button>
+      </section>
+      <section id="onsite" class="onsite" hidden>
+        <div class="row"><h2>현장 기록</h2><button class="minor" id="backToTravel" type="button">이동 화면</button></div>
+        <p class="note">사진은 선택한 출장지의 <b>계획주소</b>로 명명하며, 휴대폰 내부에 저장합니다.</p>
+        <div class="photo-buttons">
+          <label class="file-button">📷 현장사진 촬영<input id="camera" type="file" accept="image/*" capture="environment"></label>
+          <label class="file-button light">기존 사진 선택<input id="photosInput" type="file" accept="image/*" multiple></label>
+        </div>
+        <div id="photoStatus" class="note" role="status">촬영한 사진이 없습니다.</div>
+        <ul id="photoList" class="photo-list"></ul>
+        <label for="memo">현장 메모</label>
+        <textarea id="memo" rows="3" placeholder="현장에서 확인한 사실을 간단히 작성하세요."></textarea>
+        <p class="note">메모는 이 휴대폰에 저장됩니다. 사무실로 가져오려면 '출장기록 복사'를 이용하세요.</p>
+        <button class="primary full" id="finish" type="button">방문 완료 · 다음 현장</button>
+      </section>
+      <section id="completed" class="completed" hidden>
+        <h2>현장출장 완료</h2>
+        <p>방문지별 사진을 공유하거나 저장한 후 사무실에서 출장복명서를 작성하세요.</p>
+      </section>
+      <section class="exportbox">
+        <h2>사진 및 출장기록 전송</h2>
+        <div class="export-buttons">
+          <button type="button" id="sharePhotos">사진 공유 (메일 선택)</button>
+          <button type="button" id="copyMemo">출장기록 복사</button>
+        </div>
+        <p class="note">휴대폰 공유 기능이 지원되지 않으면 사진별 '저장' 버튼을 사용하세요. 공유 메뉴 실행은 이메일 전송 완료를 뜻하지 않습니다.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
