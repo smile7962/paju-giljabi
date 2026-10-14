@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>출장ON AI | 출장경로표 인쇄</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./print.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="./trip.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="./print.js" defer></script>
+</head>
+<body>
+  <div class="toolbar">
+    <strong>출장ON AI · 출장경로표</strong>
+    <span id="loadState" role="status">경로표 불러오는 중…</span>
+    <button id="printButton" type="button" disabled>인쇄하기 / PDF 저장</button>
+  </div>
+  <main class="sheet" id="sheet" hidden>
+    <header class="report-head">
+      <div><div class="brand">출장ON AI</div><h1>출장경로표</h1></div>
+      <div class="date">작성일: <strong id="date"></strong></div>
+    </header>
+    <div class="route-summary">
+      <div>출장지 <strong id="count"></strong></div>
+      <div>총 이동거리 <strong id="distance"></strong></div>
+      <div>예상 이동시간 <strong id="duration"></strong></div>
+    </div>
+    <section class="map-section" aria-label="전체 출장 경로">
+      <div id="routeMap"></div>
+      <div class="map-caption">파란 선은 전체 왕복 도로 경로입니다. 지도: © OpenStreetMap contributors</div>
+    </section>
+    <section class="details">
+      <h2>방문 순서</h2>
+      <ol id="stops" class="stops"></ol>
+    </section>
+    <section class="mobile-qr">
+      <div>
+        <h2>모바일 현장출장</h2>
+        <p>QR을 스캔하면 계획된 방문순서를 휴대폰에서 열 수 있습니다.</p>
+        <p class="note">QR에는 방문지명과 위치좌표가 포함됩니다. 비공개 민원정보는 사용하지 마세요.</p>
+      </div>
+      <div id="qrcode" aria-label="모바일 출장 QR 코드"></div>
+    </section>
+    <footer>이동거리·소요시간은 OSRM 도로망 추정치로 실시간 교통상황 및 현장 체류시간을 포함하지 않습니다.</footer>
+  </main>
+  <div class="error" id="error" hidden>
+    <h2>출장경로를 불러올 수 없습니다</h2>
+    <p id="errorMessage"></p>
+    <p>출장계획 화면에서 경로를 다시 계산한 후 <b>경로표 인쇄</b> 버튼을 눌러 주세요.</p>
+  </div>
+</body>
+</html>
