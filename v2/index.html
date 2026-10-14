@@ -11,6 +11,7 @@
   <script src="./trip.js" defer></script>
   <script src="./geocode.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="./nav.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -26,7 +27,7 @@
         <span>2 현장출장</span>
         <span>3 출장복명</span>
       </nav>
-      <span class="version">v0.2 · 모바일 인계</span>
+      <span class="version">v0.3 · 외부 내비 연동</span>
     </header>
 
     <main class="workspace">
@@ -92,7 +93,7 @@
     </main>
     <dialog id="qrDialog" class="qr-dialog" aria-labelledby="qrTitle">
       <div class="qr-head"><h2 id="qrTitle">모바일 출장 인계</h2><button class="btn small" id="qrClose" type="button">닫기</button></div>
-      <p>아래 QR을 휴대폰 카메라로 스캔하면 확정된 출장지가 열립니다.</p>
+      <p id="qrDescription">아래 QR을 휴대폰 카메라로 스캔하면 확정된 출장지가 열립니다.</p>
       <div id="qrcode" class="qr-image" aria-label="모바일 출장 QR코드"></div>
       <p id="qrHint" class="qr-hint" role="status"></p>
       <div class="qr-buttons">
