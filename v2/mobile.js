@@ -77,14 +77,28 @@ function buildName(stop, seq, file) {
   return trip.id + "_" + stop.id + "_" + sanitize(stop.name) + "_" + String(seq).padStart(2, "0") + "." + extFor(file);
 }
 function current() { return stops[index]; }
-function navLinks(stop) {
-  const dest = encodeURIComponent(stop.name);
-  $("kakaoNav").href = "https://map.kakao.com/link/to/" + dest + "," + stop.lat + "," + stop.lng;
-  const app = encodeURIComponent(location.origin + location.pathname);
-  $("naverNav").href = "nmap://route/car?dlat=" + stop.lat + "&dlng=" + stop.lng + "&dname=" + dest + "&appname=" + app;
-  $("tmapNav").href = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    ? "tmap://route?rGoName=" + dest + "&rGoX=" + stop.lng + "&rGoY=" + stop.lat
-    : "tmap://route?goalname=" + dest + "&goalx=" + stop.lng + "&goaly=" + stop.lat;
+/* 내비 실행 실패 시 사용자가 웹지도/설치 경로를 선택할 수 있게 남겨둔다.
+ * 웹 브라우저는 앱 설치 여부나 실행 성공 여부를 신뢰성 있게 확인할 수 없다.
+ */
+function openNavigation(provider) {
+  const choices = TripNav.urls(current(), location.href);
+  const target = choices[provider];
+  if (!target) return;
+  $("navFallback").hidden = false;
+  $("navProvider").textContent = target.title + " 실행 안내";
+  $("navWeb").href = target.web;
+  $("navWeb").textContent = target.webLabel;
+  $("navInstall").hidden = !target.install;
+  if (target.install) $("navInstall").href = target.install;
+  $("navHelp").textContent = target.app
+    ? target.title + " 앱을 열도록 요청했습니다. 앱이 열리지 않거나 화면이 돌아오면 웹 지도 또는 설치 안내를 선택하세요."
+    : "카카오맵 웹 길찾기를 새 창에서 엽니다. 앱 전환은 휴대폰 환경에 따라 다를 수 있습니다.";
+  if (target.app) {
+    // 사용자 터치 동작에서 즉시 앱 스킴을 실행
+    window.location.href = target.app;
+  } else {
+    window.open(target.web, "_blank", "noopener");
+  }
 }
 function makePin(n, home) {
   return L.divIcon({
@@ -157,7 +171,7 @@ function render() {
   $("finish").textContent = done ? "방문 완료됨" : "방문 완료 · 다음 현장";
   $("finish").disabled = done;
   $("memo").value = state.memos[stop.id] || "";
-  navLinks(stop);
+  $("navFallback").hidden = true;
   drawMap();
   renderPhotos();
 }
@@ -281,6 +295,9 @@ async function init() {
     stops = trip.stops;
     state = loadState();
     index = Math.max(0, stops.findIndex(s => !state.done.includes(s.id)));
+    const selectedId = new URLSearchParams(location.hash.slice(1)).get("stop");
+    const selectedIndex = stops.findIndex(s => s.id === selectedId);
+    if (selectedIndex >= 0) index = selectedIndex;
     try { db = await openDB(); photos = await readPhotos(); }
     catch (_) { db = null; }
     setupPicker();
@@ -289,6 +306,10 @@ async function init() {
     if (!db) notice("이 브라우저에서는 사진 영구저장을 사용할 수 없습니다. 다른 브라우저 또는 HTTPS에서 다시 여세요.");
   } catch (err) { displayError(err.message || "출장계획을 불러오지 못했습니다."); }
 }
+document.querySelectorAll("[data-nav]").forEach(button => {
+  button.addEventListener("click", () => openNavigation(button.dataset.nav));
+});
+$("closeFallback").addEventListener("click", () => { $("navFallback").hidden = true; });
 $("stopPicker").addEventListener("change", e => { index = Number(e.target.value); render(); });
 $("arrive").addEventListener("click", () => {
   const id = current().id;
