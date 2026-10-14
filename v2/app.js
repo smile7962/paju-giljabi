@@ -84,6 +84,31 @@ function showStops(origin, result) {
     const note = document.createElement("small");
     note.textContent = item.type;
     detail.append(title, note);
+    if (!item.home) {
+      const stop = result.visits[index - 1];
+      const nav = TripNav.urls({ name: stop.label, lat: stop.lat, lng: stop.lng }, location.href);
+      const bar = document.createElement("div");
+      bar.className = "stop-nav";
+      for (const [provider, title, url] of [
+        ["kakao", "카카오 길찾기", nav.kakao.web],
+        ["naver", "네이버 검색", nav.naver.web]
+      ]) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = title;
+        link.setAttribute("aria-label", stop.label + " " + title);
+        bar.append(link);
+      }
+      const tmap = document.createElement("button");
+      tmap.type = "button";
+      tmap.textContent = "T맵 · 휴대폰";
+      tmap.setAttribute("aria-label", stop.label + " T맵 휴대폰 연결 QR");
+      tmap.addEventListener("click", () => confirmAndShare(index - 1));
+      bar.append(tmap);
+      detail.append(bar);
+    }
     li.append(circle, detail);
     list.append(li);
   });
@@ -169,8 +194,29 @@ async function calculate() {
     $("calculate").disabled = false;
   }
 }
+function invalidatePlan() {
+  if (!confirmedTrip) return;
+  confirmedTrip = null;
+  $("print").disabled = true;
+  $("confirm").disabled = true;
+  $("printQr").removeAttribute("src");
+  $("itinerary").replaceChildren();
+  $("totalKm").textContent = "—";
+  $("totalTime").textContent = "—";
+  if (mapState.path) {
+    mapState.map.removeLayer(mapState.path);
+    mapState.path = null;
+  }
+  mapState.pins.forEach(pin => mapState.map.removeLayer(pin));
+  mapState.pins = [];
+  setStatus("출장조건이 변경되었습니다. 경로를 다시 계산해 주세요.");
+}
+["start", "locations"].forEach(id => $(id).addEventListener("input", invalidatePlan));
+$("keepOrder").addEventListener("change", invalidatePlan);
+
 $("calculate").addEventListener("click", calculate);
 $("sample").addEventListener("click", () => {
+  invalidatePlan();
   $("start").value = "파주시청";
   $("locations").value = "경기도 파주시 탄현면 헤이리마을길 82-105\n경기도 파주시 문산읍 임진각로 177\n경기도 파주시 가온로 184";
   setStatus("실제 소재지의 도로명주소 3개소를 입력했습니다. 경로계산을 실행하세요.");
@@ -183,12 +229,15 @@ ensureMap();
 
 
 /* PC에서 계획 확정 → QR로 휴대폰 인계 */
-function confirmAndShare() {
+function confirmAndShare(stopIndex = null) {
   if (!confirmedTrip) return;
   let link;
   try {
     const encoded = TripIO.encode(confirmedTrip);
     link = TripIO.locationLink(encoded, location.href);
+    if (Number.isInteger(stopIndex)) {
+      link += "&stop=S" + String(stopIndex + 1).padStart(2, "0");
+    }
     try { localStorage.setItem("tripon-last-plan", JSON.stringify(confirmedTrip)); }
     catch (_) { /* 개인 브라우징/저장공간 제한 */ }
   } catch (err) {
@@ -196,6 +245,10 @@ function confirmAndShare() {
     return;
   }
 
+  $("qrTitle").textContent = stopIndex === null ? "모바일 출장 인계" : "T맵 · 선택 출장지 보내기";
+  $("qrDescription").textContent = stopIndex === null
+    ? "아래 QR을 휴대폰 카메라로 스캔하면 확정된 출장지가 열립니다."
+    : "휴대폰으로 스캔해 해당 출장지를 선택한 뒤 T맵 앱 실행 버튼을 누르세요.";
   const qrBox = $("qrcode");
   qrBox.replaceChildren();
   $("openMobile").href = link;
@@ -216,9 +269,11 @@ function confirmAndShare() {
         correctLevel: QRCode.CorrectLevel.L
       });
       const canvas = qrBox.querySelector("canvas");
-      if (canvas) $("printQr").src = canvas.toDataURL("image/png");
-      $("printDate").textContent = "계획 확정: " + new Date().toLocaleDateString("ko-KR");
-      hint.textContent = "QR 생성 완료 · 경로표 인쇄에도 QR이 포함됩니다. QR에는 민감정보를 담지 마세요.";
+      if (stopIndex === null) {
+        if (canvas) $("printQr").src = canvas.toDataURL("image/png");
+        $("printDate").textContent = "계획 확정: " + new Date().toLocaleDateString("ko-KR");
+      }
+      hint.textContent = stopIndex === null ? "QR 생성 완료 · 경로표 인쇄에도 QR이 포함됩니다." : "선택한 방문지로 모바일 화면이 열립니다. T맵 실행은 휴대폰에서 선택합니다.";
     } catch (_) {
       qrBox.replaceChildren();
       hint.textContent = "QR 생성에 실패했습니다. 방문지명을 줄이고 다시 시도하세요.";
@@ -226,7 +281,7 @@ function confirmAndShare() {
   }
   $("qrDialog").showModal();
 }
-$("confirm").addEventListener("click", confirmAndShare);
+$("confirm").addEventListener("click", () => confirmAndShare());
 $("qrClose").addEventListener("click", () => $("qrDialog").close());
 $("copyLink").addEventListener("click", async () => {
   try {
