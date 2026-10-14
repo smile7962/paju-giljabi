@@ -153,6 +153,7 @@ async function calculate() {
   if (running) return;
   const start = $("start").value.trim();
   const stops = cleanLines($("locations").value);
+  const keepOrder = $("keepOrder").checked;
   if (!start) return setStatus("출발지를 입력하세요.", "error");
   if (!stops.length) return setStatus("방문지를 한 곳 이상 입력하세요.", "error");
   if (stops.length > MAX_STOPS) return setStatus("방문지는 최대 15곳까지 입력할 수 있습니다.", "error");
@@ -174,7 +175,12 @@ async function calculate() {
       points.push(await geocode(stops[i]));
     }
     setStatus("실제 도로망 기준 경로 계산 중…");
-    const result = await fetchRoute(points, $("keepOrder").checked);
+    const result = await fetchRoute(points, keepOrder);
+    if (start !== $("start").value.trim() ||
+        stops.join("\n") !== cleanLines($("locations").value).join("\n") ||
+        keepOrder !== $("keepOrder").checked) {
+      throw new Error("계산 중 출장조건이 변경되었습니다. 다시 계산해 주세요.");
+    }
     showMap(origin, result);
     showStops(origin, result);
     $("totalKm").textContent = result.km.toFixed(1) + "km";
