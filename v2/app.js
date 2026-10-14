@@ -11,6 +11,7 @@ const OSRM = "https://router.project-osrm.org";
 const mapState = { map: null, path: null, pins: [] };
 let running = false;
 let confirmedTrip = null;
+let printableRoute = null;
 
 function cleanLines(text) {
   return text.split(/\r?\n/)
@@ -164,6 +165,7 @@ async function calculate() {
   $("print").disabled = true;
   $("confirm").disabled = true;
   confirmedTrip = null;
+  printableRoute = null;
   $("printQr").removeAttribute("src");
   try {
     ensureMap();
@@ -190,6 +192,15 @@ async function calculate() {
     const simple = p => [p.label, +p.lat.toFixed(6), +p.lng.toFixed(6)];
     const tripId = "t-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
     confirmedTrip = [1, tripId, simple(origin), result.visits.map(simple)];
+    printableRoute = {
+      version: 1,
+      origin: { label: origin.label, lat: origin.lat, lng: origin.lng },
+      visits: result.visits.map(p => ({ label: p.label, lat: p.lat, lng: p.lng })),
+      path: result.path,
+      km: result.km,
+      seconds: result.seconds,
+      trip: confirmedTrip
+    };
     $("confirm").disabled = false;
   } catch (error) {
     setStatus(error.message || "계산 중 오류가 발생했습니다.", "error");
@@ -203,6 +214,7 @@ async function calculate() {
 function invalidatePlan() {
   if (!confirmedTrip) return;
   confirmedTrip = null;
+  printableRoute = null;
   $("print").disabled = true;
   $("confirm").disabled = true;
   $("printQr").removeAttribute("src");
@@ -230,7 +242,21 @@ $("sample").addEventListener("click", () => {
 $("fitMap").addEventListener("click", () => {
   if (mapState.path) mapState.map.fitBounds(mapState.path.getBounds(), { padding: [26, 26] });
 });
-$("print").addEventListener("click", () => window.print());
+/* 별도 A4 인쇄 화면에서 전체 경로를 새 지도에 맞춰 그린다. */
+$("print").addEventListener("click", () => {
+  if (!printableRoute) return;
+  try {
+    localStorage.setItem("tripon-print-route-v1", JSON.stringify({
+      ...printableRoute, savedAt: Date.now()
+    }));
+  } catch (_) {
+    setStatus("경로표 데이터를 브라우저에 저장하지 못했습니다. 저장공간 또는 브라우저 설정을 확인하세요.", "error");
+    return;
+  }
+  const tab = window.open("print.html", "_blank");
+  if (tab) tab.opener = null;
+  else window.location.href = "print.html";
+});
 ensureMap();
 
 
