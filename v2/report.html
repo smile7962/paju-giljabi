@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#155eef">
-  <title>출장ON AI | 출장복명</title>
+  <title>출장ON AI | 출장결과보고서</title>
   <link rel="stylesheet" href="./report.css">
   <script src="./trip.js" defer></script>
   <script src="./report.js" defer></script>
@@ -15,7 +15,7 @@
     <nav aria-label="출장 진행 단계">
       <a href="./index.html">① 출장계획</a>
       <span>② 현장출장</span>
-      <strong aria-current="step">③ 출장복명</strong>
+      <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
     <span class="edition">v0.4 · 출장복명</span>
   </header>
@@ -28,7 +28,7 @@
     <aside class="panel left" aria-labelledby="tripHeading">
       <div class="panel-head">
         <h2 id="tripHeading">출장정보</h2>
-        <p>계획된 방문지 선택</p>
+        <p>방문지마다 독립된 보고서를 작성합니다.</p>
       </div>
       <div class="panel-scroll">
         <div class="trip-id">출장 ID <code id="tripId"></code></div>
@@ -38,16 +38,19 @@
         <input id="traveler" type="text" placeholder="출장자 입력" maxlength="70">
         <label for="purpose">출장목적</label>
         <textarea id="purpose" rows="3" maxlength="2000" placeholder="출장목적 입력"></textarea>
-        <div class="side-title">출장지별 작성 현황</div>
+        <label for="reference">관련 문서번호 (선택)</label>
+        <input id="reference" type="text" placeholder="예: 허가3과-1234" maxlength="100">
+        <div class="side-title">출장지별 결과보고서</div>
         <div id="visitList" class="visit-list" role="group" aria-label="출장지 선택"></div>
-        <p class="helper">각 출장지의 확인내용과 조치사항은 오른쪽에서 입력합니다.</p>
+        <p class="helper">보고서를 선택하면 중앙에 해당 출장지의 문서 한 건만 표시됩니다.</p>
+        <div class="filename-box"><strong>개별 PDF 파일명</strong><span id="documentFilename">—</span></div>
       </div>
     </aside>
 
     <section class="panel center" aria-labelledby="documentHeading">
       <div class="panel-head doc-head">
-        <div><h2 id="documentHeading">출장복명서 미리보기</h2><p>기본 서식(시연용) · 입력사항이 문서에 즉시 반영됩니다.</p></div>
-        <button type="button" id="printReport" class="btn primary">인쇄 / PDF 저장</button>
+        <div><h2 id="documentHeading">출장결과보고서 미리보기</h2><p id="reportSubheading">선택한 출장장소별 보고서 · 제공된 HWPX 양식 기준</p></div>
+        <button type="button" id="printReport" class="btn primary">이 장소 보고서 인쇄 / PDF</button>
       </div>
       <div class="paper-scroll">
         <div id="reportPages" class="report-pages" aria-live="polite"></div>
@@ -60,11 +63,17 @@
         <p id="selectedStop">출장지를 선택하세요</p>
       </div>
       <div class="panel-scroll">
+        <label for="visitTime">출장일시 (선택)</label>
+        <input id="visitTime" type="text" placeholder="예: 2026. 10. 15. 14:00~15:00" maxlength="100">
+        <label for="attendees">참석 (선택)</label>
+        <input id="attendees" type="text" placeholder="예: 현장관계자 1명" maxlength="150">
+        <label for="docNumber">문서번호 (선택)</label>
+        <input id="docNumber" type="text" placeholder="결재 문서번호" maxlength="100">
         <label for="checkMemo">현장 확인내용</label>
         <textarea id="checkMemo" rows="5" placeholder="실제로 확인한 사실만 입력하세요." maxlength="5000"></textarea>
         <label for="actionMemo">조치사항</label>
         <textarea id="actionMemo" rows="4" placeholder="실제 수행한 조치만 입력하세요. 없으면 비워두세요." maxlength="3000"></textarea>
-        <p class="helper">AI 문장정리는 아직 연결하지 않았습니다. 미입력 내용은 임의로 작성하지 않습니다.</p>
+        <p class="helper">보고서는 선택한 장소의 일시·참석·현장 확인내용·조치사항만 반영합니다. AI 문장정리는 아직 미연결입니다.</p>
         <hr>
         <h3>모바일 출장기록 가져오기</h3>
         <textarea id="mobileMemo" rows="5" placeholder="휴대폰 '출장기록 복사' 내용을 여기에 붙여넣으세요."></textarea>
@@ -76,7 +85,7 @@
         <p class="helper">이메일로 받은 사진을 선택하세요. 파일명의 <strong>출장 ID + 방문지 ID + 계획주소</strong>가 일치할 때만 자동분류합니다.</p>
         <p id="photoStatus" class="status" role="status">사진을 불러오지 않았습니다.</p>
         <div id="photoList" class="photo-list"></div>
-        <p class="helper">분류되지 않은 사진은 방문지를 직접 선택할 수 있습니다. 사진과 입력내용은 현재 PC 브라우저에만 저장됩니다.</p>
+        <p class="helper">선택한 장소에 연결된 사진만 이 장소의 사진대지에 들어갑니다. 자료는 현재 PC 브라우저에 저장됩니다.</p>
       </div>
     </aside>
   </main>
