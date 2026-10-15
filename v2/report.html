@@ -19,7 +19,7 @@
       <span>② 현장출장</span>
       <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
-    <span class="edition">v0.6 · 원본 HWPX</span>
+    <span class="edition">v0.6.1 · 온나라 서식 분리</span>
   </header>
   <div id="noPlan" class="no-plan" hidden>
     <h1>확정된 출장계획을 찾지 못했습니다.</h1>
@@ -34,16 +34,10 @@
       </div>
       <div class="panel-scroll">
         <div class="trip-id">출장 ID <code id="tripId"></code></div>
-        <label for="tripDate">출장일자</label>
+        <label for="tripDate">출장일자 <small>본문 일시 기본값</small></label>
         <input id="tripDate" type="date">
-        <label for="reportDate">보고일자</label>
-        <input id="reportDate" type="date">
-        <label for="traveler">출장자</label>
-        <input id="traveler" type="text" placeholder="출장자 입력" maxlength="70">
-        <label for="purpose">출장목적</label>
-        <textarea id="purpose" rows="3" maxlength="2000" placeholder="출장목적 입력"></textarea>
-        <label for="reference">관련 문서번호 (선택)</label>
-        <input id="reference" type="text" placeholder="예: 허가3과-1234" maxlength="100">
+
+        <p class="helper">문서번호·보고일자·결재란·출장자 등은 온나라 관리 영역입니다. 출장목적도 장소별로 오른쪽에서 입력합니다.</p>
         <div class="side-title">출장지별 결과보고서</div>
         <div id="visitList" class="visit-list" role="group" aria-label="출장지 선택"></div>
         <p class="helper">보고서를 선택하면 중앙에 해당 출장지의 문서 한 건만 표시됩니다.</p>
@@ -66,7 +60,7 @@
 
     <aside class="panel right" aria-labelledby="editHeading">
       <div class="panel-head">
-        <h2 id="editHeading">출장결과 · 현장사진</h2>
+        <h2 id="editHeading">본문 작성 · 현장사진</h2>
         <p id="selectedStop">출장지를 선택하세요</p>
       </div>
       <div class="panel-scroll">
@@ -74,19 +68,19 @@
         <label for="hwpxTemplate" class="file-button">파주시 원본 출장결과보고서.hwpx 선택</label>
         <input id="hwpxTemplate" type="file" accept=".hwpx,application/hwp+zip">
         <p id="hwpxStatus" role="status" class="status">원본 HWPX 양식을 선택하면 선택한 출장장소의 보고서를 HWPX로 저장할 수 있습니다.</p>
-        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 표·글꼴·결재란을 그대로 사용하며 문서에 필요한 텍스트만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
+        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 표·글꼴·결재란과 온나라 입력사항을 변경하지 않고 빨간색 본문 내용만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
         <hr>
+        <label for="visitPurpose">출장목적 · 이 장소</label>
+        <textarea id="visitPurpose" rows="3" maxlength="150" placeholder="해당 현장 방문목적을 입력하세요."></textarea>
         <label for="visitTime">출장일시 (선택)</label>
         <input id="visitTime" type="text" placeholder="예: 2026. 10. 15. 14:00~15:00" maxlength="100">
         <label for="attendees">참석 (선택)</label>
         <input id="attendees" type="text" placeholder="예: 현장관계자 1명" maxlength="150">
-        <label for="docNumber">문서번호 (선택)</label>
-        <input id="docNumber" type="text" placeholder="결재 문서번호" maxlength="100">
         <label for="checkMemo">현장 확인내용</label>
         <textarea id="checkMemo" rows="5" placeholder="실제로 확인한 사실만 입력하세요." maxlength="5000"></textarea>
         <label for="actionMemo">조치사항</label>
         <textarea id="actionMemo" rows="4" placeholder="실제 수행한 조치만 입력하세요. 없으면 비워두세요." maxlength="3000"></textarea>
-        <p class="helper">보고서는 선택한 장소의 일시·참석·현장 확인내용·조치사항만 반영합니다. AI 문장정리는 아직 미연결입니다.</p>
+        <p class="helper">위 항목과 출장목적만 원본 HWPX의 본문에 입력됩니다. 현장메모는 확인된 사실만 반영하며, AI 문장정리는 아직 미연결입니다.</p>
         <hr>
         <h3>모바일 출장기록 가져오기</h3>
         <textarea id="mobileMemo" rows="5" placeholder="휴대폰 '출장기록 복사' 내용을 여기에 붙여넣으세요."></textarea>
