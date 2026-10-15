@@ -1,4 +1,4 @@
-/* 출장ON AI v0.4 · 사무실 출장복명
+/* 출장ON AI v0.5 · 방문지별 출장결과보고서
  * 서버 전송 없음. 현장사진·메모는 PC 브라우저 안에서만 관리.
  * 원본 사진을 수정하지 않고 문서 미리보기/인쇄에 사용한다.
  */
@@ -49,17 +49,27 @@ function readDraft() {
     date: typeof saved.date === "string" && saved.date ? saved.date : localDate,
     traveler: typeof saved.traveler === "string" ? saved.traveler : "",
     purpose: typeof saved.purpose === "string" ? saved.purpose : "",
+    reference: typeof saved.reference === "string" ? saved.reference : "",
+    reportDate: typeof saved.reportDate === "string" ? saved.reportDate : localDate,
     results: saved.results && typeof saved.results === "object" ? saved.results : {}
   };
 }
 function photoCount(id) { return photos.filter(ph => ph.visitId === id).length; }
 function resultFor(id) {
   const value = draft.results[id];
-  return value && typeof value === "object" ? value : { check: "", action: "" };
+  return value && typeof value === "object" ? value :
+    { check: "", action: "", time: "", attendees: "", docNumber: "" };
 }
 function saveCurrent() {
   if (!currentId) return;
-  draft.results[currentId] = { check: $("checkMemo").value, action: $("actionMemo").value };
+  draft.results[currentId] = {
+    ...resultFor(currentId),
+    check: $("checkMemo").value,
+    action: $("actionMemo").value,
+    time: $("visitTime").value,
+    attendees: $("attendees").value,
+    docNumber: $("docNumber").value
+  };
   storeDraft();
 }
 function selectStop(id) {
@@ -70,7 +80,15 @@ function selectStop(id) {
   $("selectedStop").textContent = stop.name;
   $("checkMemo").value = entry.check || "";
   $("actionMemo").value = entry.action || "";
+  $("visitTime").value = entry.time || "";
+  $("attendees").value = entry.attendees || "";
+  $("docNumber").value = entry.docNumber || "";
+  $("reportSubheading").textContent = stop.name + " · 개별 출장결과보고서";
+  $("documentFilename").textContent = documentFileName() + ".pdf";
+  document.title = documentFileName();
   renderVisits();
+  renderDocument();
+  renderPhotos();
 }
 function renderVisits() {
   const box = $("visitList");
@@ -81,7 +99,7 @@ function renderVisits() {
     button.type = "button";
     button.className = "visit" + (stop.id === currentId ? " active" : "");
     button.setAttribute("aria-pressed", String(stop.id === currentId));
-    const progress = (entry.check || "").trim() ? "현장기록 작성" : "현장기록 미작성";
+    const progress = (entry.check || "").trim() ? "보고서 작성 중" : "본문 미작성";
     button.append(
       text("span", (index + 1) + ". " + stop.name, "vname"),
       text("span", progress + " · 사진 " + photoCount(stop.id) + "장", "vmeta")
@@ -99,31 +117,87 @@ function addMeta(table, title, value) {
   tr.append(text("th", title), text("td", noInfo(value)));
   table.append(tr);
 }
+function documentFileName() {
+  const stop = stops.find(s => s.id === currentId);
+  const address = (stop?.name || "출장지").replace(/^경기도\s*파주시\s*/, "")
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").replace(/\s+/g, "").slice(0, 35) || "출장지";
+  const date = (draft.date || "").replace(/[^0-9]/g, "") || "날짜미작성";
+  // PDF 인쇄 기본 파일명(사용자 브라우저 저장창에서 변경 가능)
+  return "출장결과보고서_" + date + "_" + address + "_" + currentId + "_" + trip.id.slice(-6);
+}
+function reportLine(label, value) {
+  const row = document.createElement("p");
+  row.className = "report-line";
+  row.append(text("span", "ㅇ " + label + ": ", "line-label"));
+  row.append(text("span", noInfo(value), "line-value"));
+  return row;
+}
 function buildBodyPage() {
+  const stop = stops.find(s => s.id === currentId);
+  const entry = resultFor(currentId);
+  const count = photos.filter(ph => ph.visitId === currentId && previewSupported(ph)).length;
   const paper = document.createElement("section");
-  paper.className = "paper";
-  paper.append(text("h1", "출장복명서"));
-  const table = document.createElement("table");
-  table.className = "meta";
-  addMeta(table, "출장일자", draft.date);
-  addMeta(table, "출장자", draft.traveler);
-  addMeta(table, "출장목적", draft.purpose);
-  addMeta(table, "출발·복귀지", trip.origin);
-  paper.append(table);
-  paper.append(text("h2", "현장 확인 및 조치사항"));
-  stops.forEach((stop, i) => {
-    const entry = resultFor(stop.id);
-    const container = document.createElement("div");
-    container.className = "entry";
-    container.append(text("div", (i + 1) + ". " + stop.name, "entry-title"));
-    container.append(text("strong", "현장 확인내용"));
-    container.append(text("div", noInfo(entry.check), "value" + (!(entry.check || "").trim() ? " empty-text" : "")));
-    container.append(text("strong", "조치사항"));
-    container.append(text("div", noInfo(entry.action), "value" + (!(entry.action || "").trim() ? " empty-text" : "")));
-    paper.append(container);
-  });
-  const annexCount = photos.filter(ph => ph.visitId && previewSupported(ph)).length;
-  paper.append(text("div", "붙임: 현장사진 " + annexCount + "장" + (annexCount ? " (다음 페이지)" : " (첨부 없음)"), "annex"));
+  paper.className = "paper official-report";
+  const top = document.createElement("div");
+  top.className = "official-header";
+  const left = document.createElement("table");
+  left.className = "official-meta";
+  function addOfficeRow(key, value) {
+    const tr = document.createElement("tr");
+    tr.append(text("th", key), text("td", value || ""));
+    left.append(tr);
+  }
+  addOfficeRow("문서번호", entry.docNumber || "");
+  addOfficeRow("보존기간", "3년");
+  addOfficeRow("보고일자", draft.reportDate || "");
+  addOfficeRow("결재일자", "");
+  addOfficeRow("공개여부", "");
+  const right = document.createElement("div");
+  right.className = "approval-box";
+  const line = document.createElement("div");
+  line.className = "approver-head";
+  line.append(text("strong", "건축신고3팀장"), text("span", "결재란"));
+  right.append(line);
+  const blank = document.createElement("div");
+  blank.className = "approver-blank";
+  right.append(blank);
+  const person = document.createElement("div");
+  person.className = "approver-traveler";
+  person.append(text("strong", "출장자"), text("span", noInfo(draft.traveler)));
+  right.append(person);
+  top.append(left, right);
+  paper.append(top, text("h1", "출장결과보고서"));
+  const intro = document.createElement("p");
+  intro.className = "report-intro";
+  const reference = (draft.reference || "").trim();
+  intro.textContent = (reference ? reference + "에 의거 " : "") +
+    "『" + noInfo(draft.purpose) + "』에 관하여 아래와 같이 출장하였기에 보고합니다.";
+  paper.append(intro);
+
+  const heading = text("h2", "□ 개요", "section-title");
+  paper.append(heading);
+  const info = document.createElement("div");
+  info.className = "overview-lines";
+  info.append(
+    reportLine("일시", entry.time || draft.date),
+    reportLine("장소", stop.name),
+    reportLine("참석", entry.attendees)
+  );
+  info.append(text("p", "ㅇ 내용", "report-line"));
+  const contents = document.createElement("div");
+  contents.className = "report-contents";
+  if ((entry.check || "").trim()) {
+    contents.append(text("div", "- " + entry.check.trim(), "content-line"));
+  } else {
+    contents.append(text("div", "- 현장 확인내용 미작성", "content-line empty-text"));
+  }
+  if ((entry.action || "").trim()) {
+    contents.append(text("div", "- 조치사항: " + entry.action.trim(), "content-line"));
+  }
+  info.append(contents);
+  paper.append(info);
+  paper.append(text("p", count > 0 ? "붙임  현장사진 1부.  끝." : "붙임  현장사진 미첨부.  끝.", "annex"));
+  paper.append(text("div", "파 주 시 장  귀하", "recipient"));
   return paper;
 }
 function previewSupported(ph) {
@@ -134,7 +208,7 @@ function photoUrl(ph) {
   return imageUrls.get(ph.id);
 }
 function buildPhotoPages() {
-  const valid = photos.filter(ph => ph.visitId && previewSupported(ph));
+  const valid = photos.filter(ph => ph.visitId === currentId && previewSupported(ph));
   const pages = [];
   for (let i = 0; i < valid.length; i += 2) {
     const sheet = document.createElement("section");
@@ -242,7 +316,8 @@ async function importFiles(files) {
 function renderPhotos() {
   const root = $("photoList");
   root.replaceChildren();
-  const visible = [...photos].sort((a, b) => (a.importedAt || "").localeCompare(b.importedAt || ""));
+  const visible = photos.filter(ph => !ph.visitId || ph.visitId === currentId)
+    .sort((a, b) => (a.importedAt || "").localeCompare(b.importedAt || ""));
   for (const ph of visible) {
     const card = document.createElement("div");
     card.className = "photo-item";
@@ -319,7 +394,7 @@ function applyCopiedMemo() {
       const entry = resultFor(stop.id);
       if ((entry.check || "").trim()) skipped++;
       else {
-        draft.results[stop.id] = { check: memo, action: entry.action || "" };
+        draft.results[stop.id] = { ...entry, check: memo };
         matched++;
       }
     }
@@ -360,6 +435,8 @@ async function start() {
     $("tripDate").value = draft.date;
     $("traveler").value = draft.traveler;
     $("purpose").value = draft.purpose;
+    $("reference").value = draft.reference || "";
+    $("reportDate").value = draft.reportDate || "";
     $("workspace").hidden = false;
     selectStop(currentId);
     try {
@@ -375,16 +452,20 @@ async function start() {
     $("noPlan").querySelector("p").textContent = error.message + " 출장계획을 확정한 동일 브라우저에서 열어 주세요.";
   }
 }
-["tripDate", "traveler", "purpose"].forEach(id => {
+["tripDate", "reportDate", "traveler", "purpose", "reference"].forEach(id => {
   $(id).addEventListener("input", () => {
     draft.date = $("tripDate").value;
+    draft.reportDate = $("reportDate").value;
     draft.traveler = $("traveler").value;
     draft.purpose = $("purpose").value;
+    draft.reference = $("reference").value;
+    $("documentFilename").textContent = documentFileName() + ".pdf";
+    document.title = documentFileName();
     storeDraft();
     renderDocument();
   });
 });
-["checkMemo", "actionMemo"].forEach(id => {
+["checkMemo", "actionMemo", "visitTime", "attendees", "docNumber"].forEach(id => {
   $(id).addEventListener("input", () => { saveCurrent(); renderVisits(); renderDocument(); });
 });
 $("photoFiles").addEventListener("change", async event => {
@@ -394,14 +475,19 @@ $("photoFiles").addEventListener("change", async event => {
 });
 $("applyMobileMemo").addEventListener("click", applyCopiedMemo);
 $("printReport").addEventListener("click", () => {
-  const missing = stops.filter(s => !(resultFor(s.id).check || "").trim()).length;
+  const selected = resultFor(currentId);
+  const missing = (selected.check || "").trim() ? 0 : 1;
   const unknown = photos.filter(p => !p.visitId).length;
-  const unsupported = photos.filter(p => p.visitId && !previewSupported(p)).length;
+  const unsupported = photos.filter(p => p.visitId === currentId && !previewSupported(p)).length;
   const warnings = [];
-  if (missing) warnings.push("현장 확인내용 미작성 " + missing + "개소");
-  if (unknown) warnings.push("미분류 사진 " + unknown + "장");
+  if (missing) warnings.push("선택한 출장장소의 현장 확인내용 미작성");
+  if (unknown) warnings.push("방문지 미분류 사진 " + unknown + "장 (현재 PDF에서 제외)");
   if (unsupported) warnings.push("PDF 출력 미지원 형식 사진 " + unsupported + "장");
-  if (warnings.length && !confirm(warnings.join("\n") + "\n\n이대로 인쇄하시겠습니까?")) return;
+  if (!(draft.traveler || "").trim()) warnings.push("출장자 미작성");
+  if (!(draft.purpose || "").trim()) warnings.push("출장목적 미작성");
+  if (!(selected.attendees || "").trim()) warnings.push("선택한 장소의 참석자 미작성");
+  if (warnings.length && !confirm(warnings.join("\n") + "\n\n이 장소의 보고서만 인쇄하시겠습니까?")) return;
+  document.title = documentFileName(); // PDF 저장 시 장소별 권장 파일명
   window.print();
 });
 start();
