@@ -61,7 +61,7 @@ textarea{line-height:1.55;resize:vertical}
 .filename-box strong{display:block;font-size:11px;color:#102a56;margin-bottom:5px}
 .filename-box span{font-size:10px;line-height:1.6;word-break:break-all;color:#155eef}
 .official-report{display:flex;flex-direction:column}
-.official-report .official-header{display:grid;grid-template-columns:34% 66%;gap:7mm;align-items:start;min-height:35mm}
+.official-report .official-header{display:grid;grid-template-columns:34% minmax(0,1fr);gap:7mm;align-items:start;min-height:35mm}
 .official-meta{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px;line-height:1.35}
 .official-meta th,.official-meta td{border:1px solid #475569;padding:1.6mm 1mm;overflow-wrap:anywhere;height:6.5mm}
 .official-meta th{width:45%;background:#f8fafc;font-weight:500;text-align:center}
