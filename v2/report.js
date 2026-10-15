@@ -55,12 +55,13 @@ function photoCount(id) { return photos.filter(ph => ph.visitId === id).length; 
 function resultFor(id) {
   const value = draft.results[id];
   return value && typeof value === "object" ? value :
-    { check: "", action: "", time: "", attendees: "" };
+    { check: "", action: "", time: "", attendees: "", purpose: "" };
 }
 function saveCurrent() {
   if (!currentId) return;
   draft.results[currentId] = {
     ...resultFor(currentId),
+    purpose: $("visitPurpose").value,
     check: $("checkMemo").value,
     action: $("actionMemo").value,
     time: $("visitTime").value,
@@ -74,6 +75,7 @@ function selectStop(id) {
   const stop = stops.find(s => s.id === id);
   const entry = resultFor(id);
   $("selectedStop").textContent = stop.name;
+  $("visitPurpose").value = entry.purpose || draft.purpose || "";
   $("checkMemo").value = entry.check || "";
   $("actionMemo").value = entry.action || "";
   $("visitTime").value = entry.time || "";
@@ -164,7 +166,7 @@ function buildBodyPage() {
   paper.append(top, text("h1", "출장결과보고서"));
   const intro = document.createElement("p");
   intro.className = "report-intro";
-  intro.textContent = "명에 의거 『" + noInfo(draft.purpose) +
+  intro.textContent = "명에 의거 『" + noInfo(entry.purpose || draft.purpose) +
     "』에 아래와 같이 출장하였기에 보고합니다.";
   paper.append(intro);
 
@@ -427,7 +429,7 @@ async function start() {
     currentId = stops[0].id;
     $("tripId").textContent = trip.id;
     $("tripDate").value = draft.date;
-    $("purpose").value = draft.purpose;
+
     $("workspace").hidden = false;
     selectStop(currentId);
     try {
@@ -443,17 +445,17 @@ async function start() {
     $("noPlan").querySelector("p").textContent = error.message + " 출장계획을 확정한 동일 브라우저에서 열어 주세요.";
   }
 }
-["tripDate", "purpose"].forEach(id => {
+["tripDate"].forEach(id => {
   $(id).addEventListener("input", () => {
     draft.date = $("tripDate").value;
-    draft.purpose = $("purpose").value;
+
     $("documentFilename").textContent = documentFileName() + ".pdf";
     document.title = documentFileName();
     storeDraft();
     renderDocument();
   });
 });
-["checkMemo", "actionMemo", "visitTime", "attendees"].forEach(id => {
+["visitPurpose", "checkMemo", "actionMemo", "visitTime", "attendees"].forEach(id => {
   $(id).addEventListener("input", () => { saveCurrent(); renderVisits(); renderDocument(); });
 });
 $("photoFiles").addEventListener("change", async event => {
@@ -481,7 +483,7 @@ $("saveHwpx").addEventListener("click", async () => {
   const stop = stops.find(s => s.id === currentId);
   const entry = resultFor(currentId);
   const missing = [];
-  if (!(draft.purpose || "").trim()) missing.push("출장목적");
+  if (!(entry.purpose || draft.purpose || "").trim()) missing.push("출장목적");
   if (!(entry.check || "").trim()) missing.push("현장 확인내용");
   if (!(entry.attendees || "").trim()) missing.push("참석");
   if (missing.length && !confirm(missing.join("·") + " 항목이 미작성입니다. 그대로 HWPX를 작성할까요?")) return;
@@ -491,7 +493,7 @@ $("saveHwpx").addEventListener("click", async () => {
   $("hwpxStatus").textContent = stop.name + " 원본 HWPX 작성 중…";
   try {
     const blob = await TripHwpx.generate(file, {
-      date: draft.date, purpose: draft.purpose, address: stop.name,
+      date: draft.date, purpose: entry.purpose || draft.purpose, address: stop.name,
       visitTime: entry.time, attendees: entry.attendees,
       check: entry.check, action: entry.action
     });
@@ -520,7 +522,7 @@ $("printReport").addEventListener("click", () => {
   if (missing) warnings.push("선택한 출장장소의 현장 확인내용 미작성");
   if (unknown) warnings.push("방문지 미분류 사진 " + unknown + "장 (현재 PDF에서 제외)");
   if (unsupported) warnings.push("PDF 출력 미지원 형식 사진 " + unsupported + "장");
-  if (!(draft.purpose || "").trim()) warnings.push("출장목적 미작성");
+  if (!(selected.purpose || draft.purpose || "").trim()) warnings.push("출장목적 미작성");
   if (!(selected.attendees || "").trim()) warnings.push("선택한 장소의 참석자 미작성");
   if (warnings.length && !confirm(warnings.join("\n") + "\n\n이 장소의 보고서만 인쇄하시겠습니까?")) return;
   document.title = documentFileName(); // PDF 저장 시 장소별 권장 파일명
