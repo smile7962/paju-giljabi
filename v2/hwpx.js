@@ -1,5 +1,6 @@
 /* 출장ON AI | original HWPX report template fill
  * User picks the genuine .hwpx on this PC. Only Contents/section0.xml changes.
+ * Preserve all Onnara-owned approval/header cells; only change report BODY text.
  * Other package entries including header/styles remain from the ORIGINAL file.
  * Photos are NOT embedded in HWPX; attach separately in Onnara.
  */
@@ -65,30 +66,31 @@
         !content(cell(tables[1], 3, 0)).includes("ㅇ 일시:")) {
       throw Error("제공된 파주시 출장결과보고서 원본 서식과 구조가 다릅니다. 원본 파일을 선택하세요.");
     }
-    const header = tables[0], body = tables[1];
+    const body = tables[1];
     const date = oneLine(data.date).replace(/-/g, ". ");
     const dateTime = oneLine(data.visitTime) || date;
-    const reportDate = oneLine(data.reportDate).replace(/-/g, ". ");
     const purpose = mustFit(oneLine(data.purpose), "출장목적", 130);
     const notes = mustFit(oneLine(data.check), "현장 확인내용", 1100);
     const actions = mustFit(oneLine(data.action), "조치사항", 1000);
 
-    // Top approval/header table. Never replace rows, cell geometry, font styles, or header.xml.
-    fillCell(header, 0, 1, oneLine(data.docNumber));
-    fillCell(header, 4, 1, reportDate);
-    fillCell(header, 7, 4, oneLine(data.traveler));
-
-    // Body table: preserve source paragraph positions.
-    fillCell(body, 1, 0, (oneLine(data.reference) ? oneLine(data.reference) + " " : "") + "명에 의거 『");
+    // The entire FIRST TABLE is Onnara-owned: doc no, retention period,
+    // reporting/approval dates, disclosure, signer and approval stamps.
+    // Never modify it. Also preserve the BLACK introductory text verbatim.
     fillCell(body, 1, 1, purpose);
     const pp = paragraphs(cell(body, 3, 0));
-    if (pp.length < 10) throw Error("원본 HWPX 개요 항목 배열이 예상과 다릅니다.");
+    if (pp.length < 10 ||
+        !content(cell(body, 3, 0)).includes("ㅇ 내용") ||
+        !content(cell(body, 1, 0)).includes("명에 의거 『")) {
+      throw Error("원본 출장결과보고서 본문 구조가 예상과 다릅니다.");
+    }
+    // Fixed red labels (개요/일시/장소/참석/내용) keep their original format.
+    // Change only the variable text belonging to the report body.
     fillParagraph(pp[1], "  ㅇ 일시: " + dateTime);
     fillParagraph(pp[2], "  ㅇ 장소: " + oneLine(data.address));
     fillParagraph(pp[3], "  ㅇ 참석: " + oneLine(data.attendees));
     fillParagraph(pp[5], "    - " + notes);
-    fillParagraph(pp[6], "    - " + (actions ? "조치사항: " + actions : ""));
-    // Keep remaining original blank bullet and "붙임 현장사진 1부" untouched.
+    if (actions) fillParagraph(pp[6], "    - 조치사항: " + actions);
+    // Keep unused bullet lines and "붙임 현장사진 1부" unchanged.
     // Photo annex must be attached separately. Never imply file embeds photos.
     const output = new XMLSerializer().serializeToString(dom);
     const check = new DOMParser().parseFromString(output, "application/xml");
