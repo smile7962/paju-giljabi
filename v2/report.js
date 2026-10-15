@@ -474,6 +474,58 @@ $("photoFiles").addEventListener("change", async event => {
   await importFiles(files);
 });
 $("applyMobileMemo").addEventListener("click", applyCopiedMemo);
+/* Export a COPY of the uploaded genuine HWPX. The browser never uploads or
+ * modifies the original file, and keeps the same report/stop separation.
+ */
+$("hwpxTemplate").addEventListener("change", () => {
+  const file = $("hwpxTemplate").files?.[0];
+  $("hwpxStatus").textContent = file
+    ? file.name + " 선택됨 · 원본은 수정하지 않습니다."
+    : "파주시 원본 출장결과보고서.hwpx를 선택하세요.";
+});
+$("saveHwpx").addEventListener("click", async () => {
+  const file = $("hwpxTemplate").files?.[0];
+  if (!file) {
+    $("hwpxStatus").textContent = "먼저 실제 사용하는 원본 출장결과보고서.hwpx 파일을 선택하세요.";
+    $("hwpxTemplate").focus();
+    return;
+  }
+  const stop = stops.find(s => s.id === currentId);
+  const entry = resultFor(currentId);
+  const missing = [];
+  if (!(draft.traveler || "").trim()) missing.push("출장자");
+  if (!(draft.purpose || "").trim()) missing.push("출장목적");
+  if (!(entry.check || "").trim()) missing.push("현장 확인내용");
+  if (!(entry.attendees || "").trim()) missing.push("참석");
+  if (missing.length && !confirm(missing.join("·") + " 항목이 미작성입니다. 그대로 HWPX를 작성할까요?")) return;
+  if (!confirm("현재 HWPX 파일에는 현장사진이 삽입되지 않습니다. 온나라에서 사진을 별도 첨부하거나 한글에서 삽입해야 합니다.\n\n" + stop.name + " 출장결과보고서를 HWPX로 생성할까요?")) return;
+  const button = $("saveHwpx");
+  button.disabled = true;
+  $("hwpxStatus").textContent = stop.name + " 원본 HWPX 작성 중…";
+  try {
+    const blob = await TripHwpx.generate(file, {
+      date: draft.date, reportDate: draft.reportDate,
+      traveler: draft.traveler, purpose: draft.purpose,
+      reference: draft.reference, address: stop.name,
+      visitTime: entry.time, attendees: entry.attendees,
+      docNumber: entry.docNumber, check: entry.check, action: entry.action
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = documentFileName() + ".hwpx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    $("hwpxStatus").textContent = "HWPX 생성 완료. 한글 프로그램에서 원본 서식과 내용이 보이는지 확인한 뒤 온나라로 불러오세요.";
+  } catch (error) {
+    $("hwpxStatus").textContent = "HWPX 생성 실패: " + (error.message || "원본 파일을 확인하세요.");
+  } finally {
+    button.disabled = false;
+  }
+});
+
 $("printReport").addEventListener("click", () => {
   const selected = resultFor(currentId);
   const missing = (selected.check || "").trim() ? 0 : 1;
