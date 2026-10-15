@@ -36,9 +36,8 @@
         <div class="trip-id">출장 ID <code id="tripId"></code></div>
         <label for="tripDate">출장일자 <small>본문 일시 기본값</small></label>
         <input id="tripDate" type="date">
-        <label for="purpose">출장목적 <small>원본 빨간색 입력영역</small></label>
-        <textarea id="purpose" rows="3" maxlength="2000" placeholder="출장계획을 바탕으로 작성할 출장목적"></textarea>
-        <p class="helper">문서번호·보존기간·보고일자·결재일자·공개여부·결재란·출장자는 온나라 관리 영역이므로 입력하지 않습니다.</p>
+
+        <p class="helper">문서번호·보고일자·결재란·출장자 등은 온나라 관리 영역입니다. 출장목적도 장소별로 오른쪽에서 입력합니다.</p>
         <div class="side-title">출장지별 결과보고서</div>
         <div id="visitList" class="visit-list" role="group" aria-label="출장지 선택"></div>
         <p class="helper">보고서를 선택하면 중앙에 해당 출장지의 문서 한 건만 표시됩니다.</p>
@@ -71,6 +70,8 @@
         <p id="hwpxStatus" role="status" class="status">원본 HWPX 양식을 선택하면 선택한 출장장소의 보고서를 HWPX로 저장할 수 있습니다.</p>
         <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 표·글꼴·결재란과 온나라 입력사항을 변경하지 않고 빨간색 본문 내용만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
         <hr>
+        <label for="visitPurpose">출장목적 · 이 장소</label>
+        <textarea id="visitPurpose" rows="3" maxlength="150" placeholder="해당 현장 방문목적을 입력하세요."></textarea>
         <label for="visitTime">출장일시 (선택)</label>
         <input id="visitTime" type="text" placeholder="예: 2026. 10. 15. 14:00~15:00" maxlength="100">
         <label for="attendees">참석 (선택)</label>
