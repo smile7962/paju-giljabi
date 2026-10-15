@@ -55,6 +55,36 @@ textarea{line-height:1.55;resize:vertical}
 .photo-item .remove{font-size:11px;padding:7px;margin-top:7px;color:#b91c1c;background:white;border:1px solid #fecaca;border-radius:7px}
 .no-plan{max-width:680px;margin:70px auto;padding:32px;background:white;border:1px solid var(--line);border-radius:12px}
 .no-plan h1{font-size:20px}.no-plan p{line-height:1.7}
+
+/* 파주시 출장결과보고서 HWPX의 항목·배치에 맞춘 개별 문서 */
+.filename-box{margin-top:14px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc}
+.filename-box strong{display:block;font-size:11px;color:#102a56;margin-bottom:5px}
+.filename-box span{font-size:10px;line-height:1.6;word-break:break-all;color:#155eef}
+.official-report{display:flex;flex-direction:column}
+.official-report .official-header{display:grid;grid-template-columns:34% 66%;gap:7mm;align-items:start;min-height:35mm}
+.official-meta{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px;line-height:1.35}
+.official-meta th,.official-meta td{border:1px solid #475569;padding:1.6mm 1mm;overflow-wrap:anywhere;height:6.5mm}
+.official-meta th{width:45%;background:#f8fafc;font-weight:500;text-align:center}
+.approval-box{height:35mm;border:1px solid #475569;display:flex;flex-direction:column;font-size:10px}
+.approver-head{height:9mm;border-bottom:1px solid #475569;display:flex}
+.approver-head strong{width:30%;border-right:1px solid #475569;text-align:center;padding:1mm;font-size:10px}
+.approver-head span{flex:1;padding:1mm;text-align:center;color:#64748b}
+.approver-blank{flex:1;border-bottom:1px solid #475569}
+.approver-traveler{height:9mm;display:flex}
+.approver-traveler strong{width:30%;border-right:1px solid #475569;padding:1mm;text-align:center}
+.approver-traveler span{flex:1;padding:1mm}
+.official-report h1{font-size:21px;margin:7mm 0 4mm;text-align:center;letter-spacing:1.5px}
+.report-intro{font-size:13px;line-height:1.9;overflow-wrap:anywhere;margin:0 0 7mm}
+.official-report .section-title{font-size:15px;margin:0 0 3mm;border:0;padding:0}
+.overview-lines{padding-left:4mm;font-size:13px}
+.report-line{margin:2mm 0;display:flex;gap:2mm;align-items:start;white-space:pre-wrap}
+.line-label{white-space:nowrap;flex:none}
+.line-value{overflow-wrap:anywhere}
+.report-contents{padding:0 0 0 12mm}
+.content-line{white-space:pre-wrap;overflow-wrap:anywhere;margin:3mm 0 5mm;line-height:1.75;font-size:13px}
+.official-report .annex{margin:11mm 0 0;font-size:13px;color:#111827}
+.official-report .recipient{margin-top:auto;padding-top:15mm;font-size:17px;font-weight:800;letter-spacing:2px}
+
 @media(max-width:1180px){.workspace{grid-template-columns:minmax(200px,1fr) minmax(0,2.8fr);grid-template-rows:minmax(440px,1fr) minmax(340px,.6fr)}.right{grid-column:1/-1}.paper-scroll{padding:12px}.paper{width:210mm;max-width:100%}}
 @media(max-width:700px){.topbar{padding:10px;height:auto}.topbar nav,.edition{display:none}.workspace{display:flex;flex-direction:column;height:auto;min-height:100dvh}.panel{min-height:300px}.center{order:3}.right{order:2}.panel-scroll,.paper-scroll{overflow:visible}.paper{width:100%;min-height:0;padding:20px 15px}.doc-head{flex-wrap:wrap}}
 @page{size:A4 portrait;margin:12mm}
@@ -64,6 +94,11 @@ textarea{line-height:1.55;resize:vertical}
   .workspace,.panel.center,.paper-scroll,.report-pages{display:block!important;height:auto!important;min-height:0!important;padding:0!important;border:0!important;overflow:visible!important;background:#fff!important}
   .paper{width:100%!important;max-width:none!important;min-height:273mm!important;padding:3mm 2mm!important;box-shadow:none!important;margin:0!important;break-after:page}
   .paper:last-child{break-after:auto}
+  .official-report .official-header,.official-report .report-intro,.official-report .section-title{break-inside:avoid}
+  .official-report .recipient{break-inside:avoid}
+  .photo-block{break-inside:avoid}
+  .official-report .annex{color:#111827}
+  .filename-box{display:none!important}
   .photo-block img{max-height:84mm}
   .paper .meta th,.paper .meta td{padding:5px 7px}
 }
