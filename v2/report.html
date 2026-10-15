@@ -7,6 +7,8 @@
   <title>출장ON AI | 출장결과보고서</title>
   <link rel="stylesheet" href="./report.css">
   <script src="./trip.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="./hwpx.js" defer></script>
   <script src="./report.js" defer></script>
 </head>
 <body>
@@ -17,7 +19,7 @@
       <span>② 현장출장</span>
       <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
-    <span class="edition">v0.4 · 출장복명</span>
+    <span class="edition">v0.6 · 원본 HWPX</span>
   </header>
   <div id="noPlan" class="no-plan" hidden>
     <h1>확정된 출장계획을 찾지 못했습니다.</h1>
@@ -51,8 +53,11 @@
 
     <section class="panel center" aria-labelledby="documentHeading">
       <div class="panel-head doc-head">
-        <div><h2 id="documentHeading">출장결과보고서 미리보기</h2><p id="reportSubheading">선택한 출장장소별 보고서 · 제공된 HWPX 양식 기준</p></div>
-        <button type="button" id="printReport" class="btn primary">이 장소 보고서 인쇄 / PDF</button>
+        <div><h2 id="documentHeading">출장결과보고서 미리보기</h2><p id="reportSubheading">출장장소별 보고서 · 원본 HWPX 저장 지원</p></div>
+        <div class="export-actions">
+          <button type="button" id="saveHwpx" class="btn primary">원본 HWPX로 저장</button>
+          <button type="button" id="printReport" class="btn primary">이 장소 보고서 인쇄 / PDF</button>
+        </div>
       </div>
       <div class="paper-scroll">
         <div id="reportPages" class="report-pages" aria-live="polite"></div>
@@ -65,6 +70,12 @@
         <p id="selectedStop">출장지를 선택하세요</p>
       </div>
       <div class="panel-scroll">
+        <h3>원본 HWPX 서식</h3>
+        <label for="hwpxTemplate" class="file-button">파주시 원본 출장결과보고서.hwpx 선택</label>
+        <input id="hwpxTemplate" type="file" accept=".hwpx,application/hwp+zip">
+        <p id="hwpxStatus" role="status" class="status">원본 HWPX 양식을 선택하면 선택한 출장장소의 보고서를 HWPX로 저장할 수 있습니다.</p>
+        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 표·글꼴·결재란을 그대로 사용하며 문서에 필요한 텍스트만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
+        <hr>
         <label for="visitTime">출장일시 (선택)</label>
         <input id="visitTime" type="text" placeholder="예: 2026. 10. 15. 14:00~15:00" maxlength="100">
         <label for="attendees">참석 (선택)</label>
