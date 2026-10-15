@@ -66,7 +66,14 @@
         !content(cell(tables[1], 3, 0)).includes("ㅇ 일시:")) {
       throw Error("제공된 파주시 출장결과보고서 원본 서식과 구조가 다릅니다. 원본 파일을 선택하세요.");
     }
-    const body = tables[1];
+    const header = tables[0], body = tables[1];
+    // Reject a previous filled report used accidentally as the template.
+    // Onnara fields must start blank and remain entirely untouched.
+    for (const [row, col] of [[0, 1], [4, 1], [7, 4]]) {
+      if (content(cell(header, row, col)).trim()) {
+        throw Error("온나라 입력란이 이미 작성된 파일입니다. 빈 원본 출장결과보고서.hwpx를 선택하세요.");
+      }
+    }
     const date = oneLine(data.date).replace(/-/g, ". ");
     const dateTime = oneLine(data.visitTime) || date;
     const purpose = mustFit(oneLine(data.purpose), "출장목적", 130);
