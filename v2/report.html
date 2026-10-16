@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./report.css">
   <script src="./trip.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="./photo-hwpx.js" defer></script>
   <script src="./hwpx.js" defer></script>
   <script src="./draft.js" defer></script>
   <script src="./report.js" defer></script>
@@ -20,7 +21,7 @@
       <span>② 현장출장</span>
       <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
-    <span class="edition">v0.7 · 현장메모 초안</span>
+    <span class="edition">v0.8 · 사진대지 HWPX</span>
   </header>
   <div id="noPlan" class="no-plan" hidden>
     <h1>확정된 출장계획을 찾지 못했습니다.</h1>
@@ -69,7 +70,7 @@
         <label for="hwpxTemplate" class="file-button">파주시 원본 출장결과보고서.hwpx 선택</label>
         <input id="hwpxTemplate" type="file" accept=".hwpx,application/hwp+zip">
         <p id="hwpxStatus" role="status" class="status">원본 HWPX 양식을 선택하면 선택한 출장장소의 보고서를 HWPX로 저장할 수 있습니다.</p>
-        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 상단의 빨간 기본값(3년·건축신고3팀장)을 공란 처리하고, 표·글꼴·결재란은 유지하며 본문 내용만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
+        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 상단의 빨간 기본값(3년·건축신고3팀장)을 공란 처리하고, 표·글꼴·결재란은 유지하며 본문 내용만 채웁니다. <strong>선택한 장소의 JPG·PNG·WEBP 현장사진은 HWPX 뒤쪽에 붙임 페이지로 자동 포함됩니다. HEIC는 JPG로 변환 후 불러오세요. 사진 첨부 후 한글·온나라에서 최종 확인하세요.</strong></p>
         <hr>
         <label for="visitPurpose">출장목적 · 이 장소</label>
         <textarea id="visitPurpose" rows="3" maxlength="150" placeholder="해당 현장 방문목적을 입력하세요."></textarea>
