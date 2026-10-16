@@ -8,6 +8,7 @@ const PLAN_KEY = "tripon-last-plan";
 const DB_NAME = "tripon-report-photos";
 const MAX_PHOTOS = 60;
 let trip, stops, currentId, draft, photos = [], db, imageUrls = new Map();
+let draftContext = null;
 
 function text(tag, value, className) {
   const el = document.createElement(tag);
@@ -69,8 +70,31 @@ function saveCurrent() {
   };
   storeDraft();
 }
+function dismissDraft() {
+  draftContext = null;
+  $("draftReview").hidden = true;
+}
+function currentDraftInput() {
+  return {
+    purpose: $("visitPurpose").value,
+    address: stops.find(s => s.id === currentId)?.name || "",
+    time: $("visitTime").value,
+    attendees: $("attendees").value,
+    check: $("checkMemo").value,
+    action: $("actionMemo").value
+  };
+}
+function showDraftResult(result, source) {
+  draftContext = { tripId: trip.id, visitId: currentId, original: JSON.stringify(currentDraftInput()) };
+  $("suggestedPurpose").value = result.purpose;
+  $("suggestedCheck").value = result.check;
+  $("suggestedAction").value = result.action;
+  $("draftReview").hidden = false;
+  $("draftStatus").textContent = source + " 초안 생성 완료 · 사실관계 확인 후 적용하세요.";
+}
 function selectStop(id) {
   if (!stops.some(s => s.id === id)) return;
+  if (currentId !== id) dismissDraft();
   currentId = id;
   const stop = stops.find(s => s.id === id);
   const entry = resultFor(id);
@@ -456,7 +480,74 @@ async function start() {
   });
 });
 ["visitPurpose", "checkMemo", "actionMemo", "visitTime", "attendees"].forEach(id => {
-  $(id).addEventListener("input", () => { saveCurrent(); renderVisits(); renderDocument(); });
+  $(id).addEventListener("input", () => {
+    if (draftContext) {
+      dismissDraft();
+      $("draftStatus").textContent = "원본 내용이 변경되어 기존 초안을 취소했습니다. 다시 생성하세요.";
+    }
+    saveCurrent(); renderVisits(); renderDocument();
+  });
+});
+$("aiEndpoint").value = localStorage.getItem("tripon-ai-endpoint") || "";
+$("aiEndpoint").addEventListener("change", () => {
+  try {
+    const input = $("aiEndpoint").value.trim();
+    if (input) {
+      const parsed = new URL(input);
+      if (parsed.protocol !== "https:" || parsed.search || parsed.hash || parsed.username || parsed.password) {
+        throw Error("HTTPS 주소만 입력하세요. URL에 API 키·토큰·쿼리값을 넣지 마세요.");
+      }
+    }
+    localStorage.setItem("tripon-ai-endpoint", input);
+    $("draftStatus").textContent = input ? "AI 프록시 주소가 저장됐습니다. 실제 연결 및 기관 승인 여부를 확인하세요." : "AI 연결이 해제됐습니다.";
+  } catch (err) { $("draftStatus").textContent = err.message || "AI 프록시 주소 오류"; }
+});
+$("localDraft").addEventListener("click", () => {
+  try {
+    showDraftResult(TripDraft.localDraft(currentDraftInput()), "로컬 문장 정리(생성형 AI 아님)");
+  } catch (err) { $("draftStatus").textContent = err.message; }
+});
+$("generateAiDraft").addEventListener("click", async () => {
+  const endpoint = $("aiEndpoint").value.trim();
+  if (!endpoint) {
+    $("draftStatus").textContent = "AI 프록시가 연결되지 않았습니다. 아래 로컬 문장 정리 기능을 이용하거나 기관 승인 프록시를 설정하세요.";
+    return;
+  }
+  if (!confirm("현장메모와 장소·시간·참석정보가 외부 AI 프록시로 전송됩니다. 개인정보·비공개 민원자료가 없고 기관에서 승인된 연결인지 확인했습니까?")) return;
+  const source = currentDraftInput();
+  const stopId = currentId;
+  const btn = $("generateAiDraft");
+  btn.disabled = true;
+  $("draftStatus").textContent = "AI 초안을 요청하고 있습니다…";
+  try {
+    const result = await TripDraft.aiDraft(endpoint, source);
+    if (currentId !== stopId || JSON.stringify(currentDraftInput()) !== JSON.stringify(source)) {
+      $("draftStatus").textContent = "AI 응답을 기다리는 동안 방문지·원본메모가 변경돼 결과를 폐기했습니다.";
+      return;
+    }
+    showDraftResult(result, "생성형 AI");
+  } catch (err) {
+    $("draftStatus").textContent = "AI 요청 실패: " + (err.message || "연결 상태 확인 필요");
+  } finally { btn.disabled = false; }
+});
+$("applyDraft").addEventListener("click", () => {
+  if (!draftContext || draftContext.tripId !== trip.id || draftContext.visitId !== currentId ||
+      draftContext.original !== JSON.stringify(currentDraftInput())) {
+    dismissDraft();
+    $("draftStatus").textContent = "방문지나 원본이 변경돼 초안을 적용하지 않았습니다.";
+    return;
+  }
+  $("visitPurpose").value = $("suggestedPurpose").value;
+  $("checkMemo").value = $("suggestedCheck").value;
+  $("actionMemo").value = $("suggestedAction").value;
+  dismissDraft();
+  saveCurrent();
+  renderVisits(); renderDocument();
+  $("draftStatus").textContent = "확인된 초안을 이 출장지에만 적용했습니다. HWPX 저장 전 사실관계를 최종 검토하세요.";
+});
+$("cancelDraft").addEventListener("click", () => {
+  dismissDraft();
+  $("draftStatus").textContent = "초안을 취소했습니다. 원본 내용은 변경되지 않았습니다.";
 });
 $("photoFiles").addEventListener("change", async event => {
   const files = [...event.target.files];
