@@ -1,6 +1,7 @@
 /* 출장ON AI | original HWPX report template fill
  * User picks the genuine .hwpx on this PC. Only Contents/section0.xml changes.
- * Preserve all Onnara-owned approval/header cells; only change report BODY text.
+ * Clear only the two pre-filled red HEADER values (3년/건축신고3팀장).
+ * All other Onnara labels, cells, geometry and styles remain unchanged.
  * Other package entries including header/styles remain from the ORIGINAL file.
  * Photos are NOT embedded in HWPX; attach separately in Onnara.
  */
@@ -74,13 +75,22 @@
         throw Error("온나라 입력란이 이미 작성된 파일입니다. 빈 원본 출장결과보고서.hwpx를 선택하세요.");
       }
     }
+    // The source template itself includes two RED pre-filled sample values.
+    // Onnara supplies them when registering the document, so leave only
+    // these two VALUE cells blank; retain all labels and table formatting.
+    if (content(cell(header, 0, 3)).trim() !== "건축신고3팀장" ||
+        content(cell(header, 1, 1)).trim() !== "3년") {
+      throw Error("원본 결재표의 기본값이 변경되었습니다. 검증된 파주시 빈 원본 서식을 사용하세요.");
+    }
+    fillCell(header, 0, 3, ""); // red team-lead sample text
+    fillCell(header, 1, 1, ""); // red preservation-term sample text
     const date = oneLine(data.date).replace(/-/g, ". ");
     const dateTime = oneLine(data.visitTime) || date;
     const purpose = mustFit(oneLine(data.purpose), "출장목적", 130);
     const notes = mustFit(oneLine(data.check), "현장 확인내용", 1100);
     const actions = mustFit(oneLine(data.action), "조치사항", 1000);
 
-    // The entire FIRST TABLE is Onnara-owned: doc no, retention period,
+    // The FIRST TABLE is Onnara-owned: doc no, retention period,
     // reporting/approval dates, disclosure, signer and approval stamps.
     // Never modify it. Also preserve the BLACK introductory text verbatim.
     fillCell(body, 1, 1, purpose);
