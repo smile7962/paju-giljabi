@@ -160,7 +160,10 @@
       const caption = safeCaption(photo.caption);
       para(sectionDoc, section, "붙임 · 현장사진 " + seq + "/" + selectedPhotos.length, { id: 880000 + seq * 3, pageBreak: true, paraPr: 15, charPr: 8 });
       para(sectionDoc, section, caption, { id: 880001 + seq * 3, paraPr: 15, charPr: 8 });
-      const run = para(sectionDoc, section, "", { id: 880002 + seq * 3, paraPr: 15, charPr: 8 });
+      // This picture is inline (treatAsChar=1), so Hancom uses PARAGRAPH alignment.
+      // Original template paraPr 14 is centered; 15 is justified.
+      // Both styles are otherwise identical: preserve the original formatting.
+      const run = para(sectionDoc, section, "", { id: 880002 + seq * 3, paraPr: 14, charPr: 8 });
       picture(sectionDoc, run, id, img.w, img.h, seq);
       node(packageDoc, "opf:item", manifest, {
         id, href: path, "media-type": "image/jpeg", isEmbeded: "1"
