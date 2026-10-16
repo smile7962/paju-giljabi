@@ -578,7 +578,20 @@ $("saveHwpx").addEventListener("click", async () => {
   if (!(entry.check || "").trim()) missing.push("현장 확인내용");
   if (!(entry.attendees || "").trim()) missing.push("참석");
   if (missing.length && !confirm(missing.join("·") + " 항목이 미작성입니다. 그대로 HWPX를 작성할까요?")) return;
-  if (!confirm("현재 HWPX 파일에는 현장사진이 삽입되지 않습니다. 온나라에서 사진을 별도 첨부하거나 한글에서 삽입해야 합니다.\n\n" + stop.name + " 출장결과보고서를 HWPX로 생성할까요?")) return;
+  const sameStopPhotos = photos.filter(p => p.visitId === currentId);
+  const unsupportedPhotos = sameStopPhotos.filter(p => !previewSupported(p));
+  if (unsupportedPhotos.length) {
+    $("hwpxStatus").textContent = "이 출장지에 HEIC 등 HWPX에 삽입할 수 없는 사진이 " + unsupportedPhotos.length + "장 있습니다. JPG/PNG로 변환 후 다시 불러오거나 해당 사진을 제거하세요.";
+    return;
+  }
+  if (sameStopPhotos.length > TripPhotos.LIMIT) {
+    $("hwpxStatus").textContent = "한 출장지당 사진 " + TripPhotos.LIMIT + "장까지 첨부합니다. 현재 " + sameStopPhotos.length + "장입니다.";
+    return;
+  }
+  const countText = sameStopPhotos.length
+    ? "선택한 장소의 사진 " + sameStopPhotos.length + "장을 HWPX 뒷부분 사진대지에 첨부합니다."
+    : "선택한 장소에 분류된 사진이 없어 HWPX 본문만 작성됩니다.";
+  if (!confirm(countText + "\\n\\n" + stop.name + " 출장결과보고서를 생성할까요?")) return;
   const button = $("saveHwpx");
   button.disabled = true;
   $("hwpxStatus").textContent = stop.name + " 원본 HWPX 작성 중…";
@@ -587,7 +600,7 @@ $("saveHwpx").addEventListener("click", async () => {
       date: draft.date, purpose: entry.purpose || draft.purpose, address: stop.name,
       visitTime: entry.time, attendees: entry.attendees,
       check: entry.check, action: entry.action
-    });
+    }, sameStopPhotos);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -596,7 +609,7 @@ $("saveHwpx").addEventListener("click", async () => {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    $("hwpxStatus").textContent = "HWPX 생성 완료. 한글 프로그램에서 원본 서식과 내용이 보이는지 확인한 뒤 온나라로 불러오세요.";
+    $("hwpxStatus").textContent = "HWPX 생성 완료 · 사진 " + sameStopPhotos.length + "장 포함. 한글에서 사진·본문·결재란을 확인한 뒤 온나라 불러오기를 테스트하세요.";
   } catch (error) {
     $("hwpxStatus").textContent = "HWPX 생성 실패: " + (error.message || "원본 파일을 확인하세요.");
   } finally {
