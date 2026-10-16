@@ -28,8 +28,8 @@
 
   async function aiDraft(endpoint, data) {
     const url = new URL(String(endpoint || "").trim());
-    if (url.protocol !== "https:" || !url.hostname || url.username || url.password || url.hash) {
-      throw Error("기관에서 승인한 HTTPS AI 프록시 주소가 필요합니다.");
+    if (url.protocol !== "https:" || !url.hostname || url.username || url.password || url.search || url.hash) {
+      throw Error("기관에서 승인한 HTTPS AI 프록시 주소만 입력하세요. URL에 API 키·토큰을 포함하지 마세요.");
     }
     if (!(data.check || "").trim() && !(data.action || "").trim()) {
       throw Error("AI 초안을 만들 현장 확인내용이나 조치사항을 먼저 입력하세요.");
