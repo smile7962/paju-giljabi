@@ -107,3 +107,14 @@ textarea{line-height:1.55;resize:vertical}
 .export-actions .btn{font-size:12px}
 #hwpxTemplate{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0}
 #hwpxStatus{margin-top:8px;font-size:11px;line-height:1.6}
+
+/* Field-note drafting: no auto-apply; inline user review */
+.draft-panel{margin:16px 0;border:1px solid #cbd5e1;background:#f8fafc;border-radius:10px;padding:12px}
+.draft-panel h3{margin:0 0 6px!important;color:#102a56}
+.draft-panel .btn{width:100%;margin:5px 0;font-size:12px;white-space:normal}
+.draft-panel label{font-size:12px}
+.draft-panel input[type=url]{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 8px;font-size:11px;background:#fff;overflow:hidden}
+.draft-panel #draftReview{margin-top:10px;padding-top:9px;border-top:1px solid #cbd5e1}
+.draft-panel .draft-actions{display:flex;gap:8px;flex-wrap:wrap}
+.draft-panel .draft-actions .btn{flex:1}
+@media print{.draft-panel{display:none!important}}
