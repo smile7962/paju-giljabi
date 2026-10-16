@@ -78,10 +78,8 @@
     // The source template itself includes two RED pre-filled sample values.
     // Onnara supplies them when registering the document, so leave only
     // these two VALUE cells blank; retain all labels and table formatting.
-    if (content(cell(header, 0, 3)).trim() !== "건축신고3팀장" ||
-        content(cell(header, 1, 1)).trim() !== "3년") {
-      throw Error("원본 결재표의 기본값이 변경되었습니다. 검증된 파주시 빈 원본 서식을 사용하세요.");
-    }
+    // Clear only the preset VALUES in the known header positions, even if
+    // the team name or retention label later changes in the supplied form.
     fillCell(header, 0, 3, ""); // red team-lead sample text
     fillCell(header, 1, 1, ""); // red preservation-term sample text
     const date = oneLine(data.date).replace(/-/g, ". ");
