@@ -84,43 +84,57 @@
       blob ? resolve(blob) : reject(Error("JPEG 변환에 실패했습니다.")), "image/jpeg", 0.8));
   }
   async function jpg(item) {
-    const file = item.blob;
-    if (!(file instanceof Blob) || file.size > 25 * 1024 * 1024 ||
-        !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      throw Error("HWPX 사진은 JPG·PNG·WEBP 형식, 장당 25MB 이하만 지원합니다.");
+    // A photo arriving through an email app can retain a correct .jpg/.png
+    // filename yet have an empty/generic MIME type. Check real file bytes.
+    const file = item?.blob;
+    if (!file || typeof file.arrayBuffer !== "function" ||
+        !Number.isFinite(file.size) || file.size === 0 || file.size > 25 * 1024 * 1024) {
+      throw Error("사진 파일을 읽을 수 없거나 크기 제한(25MB)을 초과했습니다.");
     }
-    let bitmap = null, image = null, url = null;
+    const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const jpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    const png = [137, 80, 78, 71, 13, 10, 26, 10].every((b, i) => header[i] === b);
+    const webp = String.fromCharCode(...header.slice(0, 4)) === "RIFF" &&
+      String.fromCharCode(...header.slice(8, 12)) === "WEBP";
+    if (!jpeg && !png && !webp) {
+      throw Error("실제 파일 형식이 JPEG/PNG/WEBP가 아닙니다. JPG로 변환 후 다시 선택하세요.");
+    }
+    let bitmap = null, picture = null, objectUrl = null;
     try {
       if (typeof createImageBitmap === "function") {
-        try { bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }); }
-        catch (_) { /* Browser may not support ImageBitmap options */ }
+        try { bitmap = await createImageBitmap(file); }
+        catch (_) { /* Fallback to Image element */ }
       }
       if (!bitmap) {
-        url = URL.createObjectURL(file);
-        image = new Image();
-        image.src = url;
-        await image.decode();
+        objectUrl = URL.createObjectURL(new Blob([file], {
+          type: jpeg ? "image/jpeg" : png ? "image/png" : "image/webp"
+        }));
+        picture = new Image();
+        picture.src = objectUrl;
+        await picture.decode();
       }
-      const w = bitmap ? bitmap.width : image.naturalWidth;
-      const h = bitmap ? bitmap.height : image.naturalHeight;
-      if (!w || !h) throw Error("사진 크기를 읽을 수 없습니다.");
-      const ratio = Math.min(1, 1600 / Math.max(w, h));
+      const width = bitmap ? bitmap.width : picture.naturalWidth;
+      const height = bitmap ? bitmap.height : picture.naturalHeight;
+      if (!width || !height) throw Error("사진 크기 판독 실패");
+      const ratio = Math.min(1, 1600 / Math.max(width, height));
       const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(w * ratio));
-      canvas.height = Math.max(1, Math.round(h * ratio));
+      canvas.width = Math.max(1, Math.round(width * ratio));
+      canvas.height = Math.max(1, Math.round(height * ratio));
       const ctx = canvas.getContext("2d");
-      if (!ctx) throw Error("사진 압축을 지원하지 않는 브라우저입니다.");
-      ctx.fillStyle = "#fff"; // white matte for transparent PNG/WebP
+      if (!ctx) throw Error("브라우저에서 이미지 캔버스를 사용할 수 없습니다.");
+      ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(bitmap || image, 0, 0, canvas.width, canvas.height);
-      return { blob: await canvasToBlob(canvas), ...dimensions(w, h) };
+      ctx.drawImage(bitmap || picture, 0, 0, canvas.width, canvas.height);
+      return { blob: await canvasToBlob(canvas), ...dimensions(width, height) };
+    } catch (error) {
+      throw Error("사진 JPEG 변환 실패: " + (error.message || "지원되지 않는 이미지"));
     } finally {
-      if (bitmap) bitmap.close();
-      if (url) URL.revokeObjectURL(url);
+      if (bitmap?.close) bitmap.close();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
   }
 
-  async function embed(zip, filledSectionXml, selectedPhotos) {
+  async function embed(zip, filledSectionXml, selectedPhotos, onProgress = () => {}) {
     if (!Array.isArray(selectedPhotos) || selectedPhotos.length < 1 || selectedPhotos.length > LIMIT) {
       throw Error("사진 자동첨부는 한 출장지당 1~" + LIMIT + "장까지 지원합니다.");
     }
@@ -139,7 +153,10 @@
       const id = "triponphoto" + seq;
       const path = "BinData/" + id + ".jpg";
       if (used.has(id) || zip.file(path)) throw Error("사진 ID가 원본 문서와 중복됩니다.");
-      const img = await jpg(photo);
+      onProgress("사진 " + seq + "/" + selectedPhotos.length + " JPEG 변환 중: " + (photo.name || "현장사진"));
+      let img;
+      try { img = await jpg(photo); }
+      catch (error) { throw Error((photo.name || "사진 " + seq) + ": " + error.message); }
       const caption = safeCaption(photo.caption);
       para(sectionDoc, section, "붙임 · 현장사진 " + seq + "/" + selectedPhotos.length, { id: 880000 + seq * 3, pageBreak: true, paraPr: 15, charPr: 8 });
       para(sectionDoc, section, caption, { id: 880001 + seq * 3, paraPr: 15, charPr: 8 });
@@ -150,6 +167,7 @@
       });
       zip.file(path, new Uint8Array(await img.blob.arrayBuffer()), { compression: "DEFLATE" });
       used.add(id);
+      onProgress("사진 " + seq + "/" + selectedPhotos.length + " HWPX 첨부 완료");
     }
     const sectionXml = new XMLSerializer().serializeToString(sectionDoc);
     const packageXml = new XMLSerializer().serializeToString(packageDoc);

@@ -21,7 +21,7 @@
       <span>② 현장출장</span>
       <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
-    <span class="edition">v0.8 · 사진대지 HWPX</span>
+    <span class="edition">v0.8.1 · HWPX 저장 안정화</span>
   </header>
   <div id="noPlan" class="no-plan" hidden>
     <h1>확정된 출장계획을 찾지 못했습니다.</h1>
@@ -54,6 +54,10 @@
           <button type="button" id="saveHwpx" class="btn primary">원본 HWPX로 저장</button>
           <button type="button" id="printReport" class="btn primary">이 장소 보고서 인쇄 / PDF</button>
         </div>
+        <div class="export-feedback" id="hwpxExportFeedback" role="status" aria-live="polite">
+          <span id="hwpxExportMessage">HWPX 저장 준비</span>
+          <a id="downloadHwpx" class="btn outline" hidden>HWPX 직접 다운로드</a>
+        </div>
       </div>
       <div class="paper-scroll">
         <div id="reportPages" class="report-pages" aria-live="polite"></div>
@@ -69,6 +73,10 @@
         <h3>원본 HWPX 서식</h3>
         <label for="hwpxTemplate" class="file-button">파주시 원본 출장결과보고서.hwpx 선택</label>
         <input id="hwpxTemplate" type="file" accept=".hwpx,application/hwp+zip">
+        <label class="hwpx-photo-option">
+          <input id="includeHwpxPhotos" type="checkbox" checked>
+          <span>분류된 현장사진을 HWPX 붙임에 포함</span>
+        </label>
         <p id="hwpxStatus" role="status" class="status">원본 HWPX 양식을 선택하면 선택한 출장장소의 보고서를 HWPX로 저장할 수 있습니다.</p>
         <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 상단의 빨간 기본값(3년·건축신고3팀장)을 공란 처리하고, 표·글꼴·결재란은 유지하며 본문 내용만 채웁니다. <strong>선택한 장소의 JPG·PNG·WEBP 현장사진은 HWPX 뒤쪽에 붙임 페이지로 자동 포함됩니다. HEIC는 JPG로 변환 후 불러오세요. 사진 첨부 후 한글·온나라에서 최종 확인하세요.</strong></p>
         <hr>

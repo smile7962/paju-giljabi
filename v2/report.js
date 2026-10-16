@@ -9,6 +9,21 @@ const DB_NAME = "tripon-report-photos";
 const MAX_PHOTOS = 60;
 let trip, stops, currentId, draft, photos = [], db, imageUrls = new Map();
 let draftContext = null;
+let currentHwpxDownloadUrl = null;
+function hwpxMessage(message, error = false) {
+  $("hwpxStatus").textContent = message;
+  $("hwpxExportMessage").textContent = message;
+  $("hwpxExportFeedback").classList.toggle("error", error);
+}
+function clearHwpxLink() {
+  $("downloadHwpx").hidden = true;
+  $("downloadHwpx").removeAttribute("href");
+  if (currentHwpxDownloadUrl) {
+    URL.revokeObjectURL(currentHwpxDownloadUrl);
+    currentHwpxDownloadUrl = null;
+  }
+}
+
 
 function text(tag, value, className) {
   const el = document.createElement(tag);
@@ -565,56 +580,93 @@ $("hwpxTemplate").addEventListener("change", () => {
     : "파주시 원본 출장결과보고서.hwpx를 선택하세요.";
 });
 $("saveHwpx").addEventListener("click", async () => {
-  const file = $("hwpxTemplate").files?.[0];
-  if (!file) {
-    $("hwpxStatus").textContent = "먼저 실제 사용하는 원본 출장결과보고서.hwpx 파일을 선택하세요.";
-    $("hwpxTemplate").focus();
-    return;
-  }
-  const stop = stops.find(s => s.id === currentId);
-  const entry = resultFor(currentId);
-  const missing = [];
-  if (!(entry.purpose || draft.purpose || "").trim()) missing.push("출장목적");
-  if (!(entry.check || "").trim()) missing.push("현장 확인내용");
-  if (!(entry.attendees || "").trim()) missing.push("참석");
-  if (missing.length && !confirm(missing.join("·") + " 항목이 미작성입니다. 그대로 HWPX를 작성할까요?")) return;
-  const sameStopPhotos = photos.filter(p => p.visitId === currentId);
-  const unsupportedPhotos = sameStopPhotos.filter(p => !previewSupported(p));
-  if (unsupportedPhotos.length) {
-    $("hwpxStatus").textContent = "이 출장지에 HEIC 등 HWPX에 삽입할 수 없는 사진이 " + unsupportedPhotos.length + "장 있습니다. JPG/PNG로 변환 후 다시 불러오거나 해당 사진을 제거하세요.";
-    return;
-  }
-  if (sameStopPhotos.length > TripPhotos.LIMIT) {
-    $("hwpxStatus").textContent = "한 출장지당 사진 " + TripPhotos.LIMIT + "장까지 첨부합니다. 현재 " + sameStopPhotos.length + "장입니다.";
-    return;
-  }
-  const countText = sameStopPhotos.length
-    ? "선택한 장소의 사진 " + sameStopPhotos.length + "장을 HWPX 뒷부분 사진대지에 첨부합니다."
-    : "선택한 장소에 분류된 사진이 없어 HWPX 본문만 작성됩니다.";
-  if (!confirm(countText + "\n\n" + stop.name + " 출장결과보고서를 생성할까요?")) return;
   const button = $("saveHwpx");
+  if (button.disabled) return;
+  clearHwpxLink();
   button.disabled = true;
-  $("hwpxStatus").textContent = stop.name + " 원본 HWPX 작성 중…";
+  let step = "출력 준비";
   try {
+    const file = $("hwpxTemplate").files?.[0];
+    if (!file) throw Error("원본 출장결과보고서.hwpx를 먼저 선택하세요.");
+    if (!rootHasExportModules()) throw Error("HWPX 생성 스크립트가 로드되지 않았습니다. Ctrl+F5로 다시 불러오세요.");
+    const stop = stops.find(s => s.id === currentId);
+    if (!stop) throw Error("선택한 출장장소가 없습니다.");
+    const entry = resultFor(currentId);
+    const missing = [];
+    if (!(entry.purpose || draft.purpose || "").trim()) missing.push("출장목적");
+    if (!(entry.check || "").trim()) missing.push("현장 확인내용");
+    if (!(entry.attendees || "").trim()) missing.push("참석");
+    if (missing.length && !confirm(missing.join("·") + "이(가) 미작성입니다. 이대로 작성하시겠습니까?")) {
+      hwpxMessage("작성 작업을 취소했습니다. 기존 입력내용은 유지됩니다.");
+      return;
+    }
+    const selected = photos.filter(p => p.visitId === currentId);
+    const include = $("includeHwpxPhotos").checked;
+    const attached = include ? selected : [];
+    if (attached.length > TripPhotos.LIMIT) {
+      throw Error("한 출장지당 현장사진 " + TripPhotos.LIMIT + "장까지 첨부할 수 있습니다. 현재 " + attached.length + "장입니다.");
+    }
+    const unsupported = attached.filter(p => !previewSupported(p));
+    if (unsupported.length) {
+      throw Error("선택한 현장사진 " + unsupported.length + "장은 JPG/PNG/WEBP가 아닙니다. HEIC라면 JPEG로 변환하거나 '사진 제외' 후 본문만 저장하세요.");
+    }
+    if (!confirm((include && attached.length ? "현장사진 " + attached.length + "장을 포함합니다." :
+      "현장사진 없이 본문만 작성합니다.") + "\n\n" + stop.name + " 결과보고서 HWPX를 생성하시겠습니까?")) {
+      hwpxMessage("작성 작업을 취소했습니다.");
+      return;
+    }
+    const placeId = currentId;
+    step = "원본 HWPX 읽기";
+    hwpxMessage(step + "…");
     const blob = await TripHwpx.generate(file, {
-      date: draft.date, purpose: entry.purpose || draft.purpose, address: stop.name,
-      visitTime: entry.time, attendees: entry.attendees,
-      check: entry.check, action: entry.action
-    }, sameStopPhotos);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = documentFileName() + ".hwpx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-    $("hwpxStatus").textContent = "HWPX 생성 완료 · 사진 " + sameStopPhotos.length + "장 포함. 한글에서 사진·본문·결재란을 확인한 뒤 온나라 불러오기를 테스트하세요.";
+      date: draft.date,
+      purpose: entry.purpose || draft.purpose,
+      address: stop.name,
+      visitTime: entry.time,
+      attendees: entry.attendees,
+      check: entry.check,
+      action: entry.action
+    }, attached, (phase) => {
+      step = phase;
+      hwpxMessage(phase);
+    });
+    if (placeId !== currentId) {
+      throw Error("생성 중 다른 출장지가 선택되어 결과를 취소했습니다. 다시 저장하세요.");
+    }
+    step = "파일 다운로드 준비";
+    currentHwpxDownloadUrl = URL.createObjectURL(blob);
+    const name = documentFileName() + ".hwpx";
+    const link = $("downloadHwpx");
+    link.href = currentHwpxDownloadUrl;
+    link.download = name;
+    link.hidden = false;
+    // Some browsers suppress programmatic downloads after awaited operations.
+    // Always retain a real, visible link for a user-initiated download.
+    hwpxMessage("HWPX 생성 완료 · " + Math.ceil(blob.size / 1024) + "KB · 사진 " +
+      attached.length + "장. 자동 저장이 시작되지 않으면 'HWPX 직접 다운로드'를 클릭하세요.");
+    link.click();
   } catch (error) {
-    $("hwpxStatus").textContent = "HWPX 생성 실패: " + (error.message || "원본 파일을 확인하세요.");
+    hwpxMessage("HWPX 저장 실패 [" + step + "]: " +
+      (error?.message || "알 수 없는 오류") +
+      " · 먼저 '사진 포함' 선택을 해제하고 본문 저장이 되는지 확인해 주세요.", true);
   } finally {
     button.disabled = false;
   }
+});
+function rootHasExportModules() {
+  return typeof TripHwpx !== "undefined" && typeof TripPhotos !== "undefined" &&
+    typeof JSZip !== "undefined";
+}
+$("hwpxTemplate").addEventListener("change", () => {
+  clearHwpxLink();
+  const filename = $("hwpxTemplate").files?.[0]?.name;
+  hwpxMessage(filename ? "원본 선택됨: " + filename : "원본 HWPX를 선택하세요.");
+});
+$("includeHwpxPhotos").addEventListener("change", () => {
+  clearHwpxLink();
+  hwpxMessage($("includeHwpxPhotos").checked
+    ? "HWPX 저장 시 해당 출장지의 사진을 자동 포함합니다."
+    : "HWPX 저장 시 사진을 제외하고 본문만 생성합니다.");
 });
 
 $("printReport").addEventListener("click", () => {
