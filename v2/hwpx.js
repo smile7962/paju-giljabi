@@ -114,13 +114,14 @@
     }
     return output;
   }
-  async function generate(file, data, photoRecords = []) {
+  async function generate(file, data, photoRecords = [], onProgress = () => {}) {
     if (typeof JSZip === "undefined") {
       throw Error("HWPX 편집 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.");
     }
     if (!file || !/\.hwpx$/i.test(file.name) || file.size > 20 * 1024 * 1024) {
       throw Error("20MB 이하의 원본 .hwpx 파일을 선택하세요.");
     }
+    onProgress("원본 HWPX 확인 중…");
     const zip = await JSZip.loadAsync(await file.arrayBuffer());
     if (!zip.file("mimetype") || !zip.file("Contents/section0.xml")) {
       throw Error("HWPX 파일의 필수 구성요소를 찾을 수 없습니다.");
@@ -129,15 +130,23 @@
     if (mime !== "application/hwp+zip") throw Error("정상적인 HWPX 원본 파일이 아닙니다.");
     const original = await zip.file("Contents/section0.xml").async("string");
     const filled = fillOriginal(original, data);
+    onProgress("출장결과보고서 본문 작성 완료");
     if (photoRecords.length > 0) {
       if (!root.TripPhotos) throw Error("현장사진 HWPX 모듈을 불러오지 못했습니다.");
-      await root.TripPhotos.embed(zip, filled, photoRecords);
+      await root.TripPhotos.embed(zip, filled, photoRecords, onProgress);
     } else {
       zip.file("Contents/section0.xml", filled, { compression: "DEFLATE" });
     }
     // HWPX spec: mimetype first and stored uncompressed (JSZip retains imported entry order).
     zip.file("mimetype", mime, { compression: "STORE" });
-    return zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 }, mimeType: "application/hwp+zip" });
+    onProgress("HWPX 파일 압축·생성 중…");
+    const generated = await zip.generateAsync({
+      type: "blob", compression: "DEFLATE",
+      compressionOptions: { level: 6 }, mimeType: "application/hwp+zip"
+    });
+    if (!generated || !generated.size) throw Error("생성된 HWPX 데이터가 비어 있습니다.");
+    onProgress("HWPX 생성 완료 · " + Math.ceil(generated.size / 1024) + "KB");
+    return generated;
   }
   root.TripHwpx = { generate, fillOriginal };
 })(window);
