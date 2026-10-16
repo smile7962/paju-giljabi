@@ -118,3 +118,19 @@ textarea{line-height:1.55;resize:vertical}
 .draft-panel .draft-actions{display:flex;gap:8px;flex-wrap:wrap}
 .draft-panel .draft-actions .btn{flex:1}
 @media print{.draft-panel{display:none!important}}
+
+
+/* v0.8.1 HWPX download: feedback is visible next to the Save button */
+.doc-head{flex-wrap:wrap}
+.doc-head .export-feedback{
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-basis:100%;
+  min-width:0;padding:5px 9px;border-radius:7px;
+  background:#eff6ff;color:#174ea6;font-size:11px;line-height:1.5
+}
+.doc-head .export-feedback.error{background:#fff1f2;color:#b91c1c}
+.export-feedback #hwpxExportMessage{flex:1;overflow-wrap:anywhere}
+.export-feedback #downloadHwpx{flex:none;min-height:32px;padding:6px 10px;font-size:11px}
+.export-feedback #downloadHwpx[hidden]{display:none!important}
+.hwpx-photo-option{display:flex!important;align-items:center;gap:8px;margin:10px 0!important;font-size:12px!important;cursor:pointer}
+.hwpx-photo-option input{width:17px;height:17px;accent-color:#155eef}
+@media print{.export-feedback{display:none!important}}
