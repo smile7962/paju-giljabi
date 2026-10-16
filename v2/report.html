@@ -9,6 +9,7 @@
   <script src="./trip.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   <script src="./hwpx.js" defer></script>
+  <script src="./draft.js" defer></script>
   <script src="./report.js" defer></script>
 </head>
 <body>
@@ -19,7 +20,7 @@
       <span>② 현장출장</span>
       <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
-    <span class="edition">v0.6.1 · 온나라 서식 분리</span>
+    <span class="edition">v0.7 · 현장메모 초안</span>
   </header>
   <div id="noPlan" class="no-plan" hidden>
     <h1>확정된 출장계획을 찾지 못했습니다.</h1>
@@ -68,7 +69,7 @@
         <label for="hwpxTemplate" class="file-button">파주시 원본 출장결과보고서.hwpx 선택</label>
         <input id="hwpxTemplate" type="file" accept=".hwpx,application/hwp+zip">
         <p id="hwpxStatus" role="status" class="status">원본 HWPX 양식을 선택하면 선택한 출장장소의 보고서를 HWPX로 저장할 수 있습니다.</p>
-        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 표·글꼴·결재란과 온나라 입력사항을 변경하지 않고 빨간색 본문 내용만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
+        <p class="helper">선택한 파일은 외부 서버로 전송하지 않습니다. 원본 상단의 빨간 기본값(3년·건축신고3팀장)을 공란 처리하고, 표·글꼴·결재란은 유지하며 본문 내용만 채웁니다. <strong>현장사진은 현재 HWPX에 자동 포함되지 않으므로 온나라에서 별도로 첨부하거나 한글에서 삽입해야 합니다.</strong></p>
         <hr>
         <label for="visitPurpose">출장목적 · 이 장소</label>
         <textarea id="visitPurpose" rows="3" maxlength="150" placeholder="해당 현장 방문목적을 입력하세요."></textarea>
@@ -80,7 +81,29 @@
         <textarea id="checkMemo" rows="5" placeholder="실제로 확인한 사실만 입력하세요." maxlength="5000"></textarea>
         <label for="actionMemo">조치사항</label>
         <textarea id="actionMemo" rows="4" placeholder="실제 수행한 조치만 입력하세요. 없으면 비워두세요." maxlength="3000"></textarea>
-        <p class="helper">위 항목과 출장목적만 원본 HWPX의 본문에 입력됩니다. 현장메모는 확인된 사실만 반영하며, AI 문장정리는 아직 미연결입니다.</p>
+        <p class="helper">위 항목과 출장목적만 원본 HWPX의 본문에 입력됩니다.</p>
+        <section class="draft-panel" aria-labelledby="draftHeading">
+          <h3 id="draftHeading">문장 초안 · 담당자 확인</h3>
+          <p class="helper">현재 메모를 정리해 미리보기로 표시합니다. 승인 전에는 작성내용을 변경하지 않습니다.</p>
+          <button id="localDraft" type="button" class="btn outline">현장메모 문장 정리 (로컬)</button>
+          <label for="aiEndpoint">AI 초안용 프록시 주소 (선택)</label>
+          <input id="aiEndpoint" type="url" autocomplete="off" spellcheck="false" placeholder="https://승인된-AI-프록시/..." >
+          <button id="generateAiDraft" type="button" class="btn outline">생성형 AI 초안 요청</button>
+          <p class="helper">AI 연결은 기본적으로 꺼져 있습니다. 기관 승인된 프록시 주소를 입력하고 <strong>비민감·합성자료</strong>일 때만 사용하세요. 사진은 AI에 전송하지 않습니다.</p>
+          <p id="draftStatus" role="status" class="status">현장메모를 입력한 다음 초안을 생성하세요.</p>
+          <div id="draftReview" hidden>
+            <label for="suggestedPurpose">출장목적 초안</label>
+            <textarea id="suggestedPurpose" rows="2" maxlength="150"></textarea>
+            <label for="suggestedCheck">현장 확인내용 초안</label>
+            <textarea id="suggestedCheck" rows="4" maxlength="5000"></textarea>
+            <label for="suggestedAction">조치사항 초안</label>
+            <textarea id="suggestedAction" rows="3" maxlength="3000"></textarea>
+            <div class="draft-actions">
+              <button id="applyDraft" type="button" class="btn primary">확인 후 적용</button>
+              <button id="cancelDraft" type="button" class="btn outline">취소</button>
+            </div>
+          </div>
+        </section>
         <hr>
         <h3>모바일 출장기록 가져오기</h3>
         <textarea id="mobileMemo" rows="5" placeholder="휴대폰 '출장기록 복사' 내용을 여기에 붙여넣으세요."></textarea>
