@@ -591,7 +591,7 @@ $("saveHwpx").addEventListener("click", async () => {
   const countText = sameStopPhotos.length
     ? "선택한 장소의 사진 " + sameStopPhotos.length + "장을 HWPX 뒷부분 사진대지에 첨부합니다."
     : "선택한 장소에 분류된 사진이 없어 HWPX 본문만 작성됩니다.";
-  if (!confirm(countText + "\\n\\n" + stop.name + " 출장결과보고서를 생성할까요?")) return;
+  if (!confirm(countText + "\n\n" + stop.name + " 출장결과보고서를 생성할까요?")) return;
   const button = $("saveHwpx");
   button.disabled = true;
   $("hwpxStatus").textContent = stop.name + " 원본 HWPX 작성 중…";
