@@ -148,7 +148,7 @@
       node(packageDoc, "opf:item", manifest, {
         id, href: path, "media-type": "image/jpeg", isEmbeded: "1"
       });
-      zip.file(path, img.blob, { compression: "DEFLATE" });
+      zip.file(path, new Uint8Array(await img.blob.arrayBuffer()), { compression: "DEFLATE" });
       used.add(id);
     }
     const sectionXml = new XMLSerializer().serializeToString(sectionDoc);
