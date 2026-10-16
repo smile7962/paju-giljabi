@@ -169,7 +169,7 @@ function buildBodyPage() {
     left.append(tr);
   }
   addOfficeRow("문서번호", "");
-  addOfficeRow("보존기간", "3년");
+  addOfficeRow("보존기간", "");
   addOfficeRow("보고일자", "");
   addOfficeRow("결재일자", "");
   addOfficeRow("공개여부", "");
@@ -177,7 +177,7 @@ function buildBodyPage() {
   right.className = "approval-box";
   const line = document.createElement("div");
   line.className = "approver-head";
-  line.append(text("strong", "건축신고3팀장"), text("span", "결재란"));
+  line.append(text("strong", ""), text("span", "결재란"));
   right.append(line);
   const blank = document.createElement("div");
   blank.className = "approver-blank";
