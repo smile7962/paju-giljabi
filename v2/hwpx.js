@@ -3,7 +3,7 @@
  * Clear only the two pre-filled red HEADER values (3년/건축신고3팀장).
  * All other Onnara labels, cells, geometry and styles remain unchanged.
  * Other package entries including header/styles remain from the ORIGINAL file.
- * Photos are NOT embedded in HWPX; attach separately in Onnara.
+ * Optional image annex is appended after original report without editing source layout.
  */
 (function (root) {
   "use strict";
@@ -106,7 +106,7 @@
     fillParagraph(pp[5], "    - " + notes);
     if (actions) fillParagraph(pp[6], "    - 조치사항: " + actions);
     // Keep unused bullet lines and "붙임 현장사진 1부" unchanged.
-    // Photo annex must be attached separately. Never imply file embeds photos.
+    // The optional photo annex is added separately AFTER the source report.
     const output = new XMLSerializer().serializeToString(dom);
     const check = new DOMParser().parseFromString(output, "application/xml");
     if (check.getElementsByTagName("parsererror").length) {
@@ -114,7 +114,7 @@
     }
     return output;
   }
-  async function generate(file, data) {
+  async function generate(file, data, photoRecords = []) {
     if (typeof JSZip === "undefined") {
       throw Error("HWPX 편집 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.");
     }
@@ -128,7 +128,13 @@
     const mime = (await zip.file("mimetype").async("string")).trim();
     if (mime !== "application/hwp+zip") throw Error("정상적인 HWPX 원본 파일이 아닙니다.");
     const original = await zip.file("Contents/section0.xml").async("string");
-    zip.file("Contents/section0.xml", fillOriginal(original, data), { compression: "DEFLATE" });
+    const filled = fillOriginal(original, data);
+    if (photoRecords.length > 0) {
+      if (!root.TripPhotos) throw Error("현장사진 HWPX 모듈을 불러오지 못했습니다.");
+      await root.TripPhotos.embed(zip, filled, photoRecords);
+    } else {
+      zip.file("Contents/section0.xml", filled, { compression: "DEFLATE" });
+    }
     // HWPX spec: mimetype first and stored uncompressed (JSZip retains imported entry order).
     zip.file("mimetype", mime, { compression: "STORE" });
     return zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 }, mimeType: "application/hwp+zip" });
