@@ -1,0 +1,21 @@
+# 출장ON AI v0.9 — optional AI worker, NOT deployed by GitHub Pages.
+# Wrangler >= 4.36.0; deploy after security approval.
+name = "tripon-ai-draft-demo"
+main = "ai-draft.js"
+compatibility_date = "2026-10-15"
+workers_dev = true
+
+[vars]
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+
+[[ratelimits]]
+name = "DRAFT_RATE_LIMITER"
+namespace_id = "1007"
+
+[ratelimits.simple]
+limit = 5
+period = 60
+
+# Required secrets configured manually, NEVER commit their values:
+# npx wrangler secret put GEMINI_API_KEY
+# npx wrangler secret put TRIPON_DEMO_TOKEN
