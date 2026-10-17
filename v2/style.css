@@ -76,6 +76,21 @@ textarea{resize:vertical;min-height:160px}
 .steps .step-link{padding:6px 10px;border-radius:20px;color:var(--muted);font-size:13px;text-decoration:none}
 .steps .step-link:hover{color:var(--blue);background:var(--soft)}
 .panel-footer .report-entry{flex:1 1 100%!important;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;background:#f8fafc}
+
+/* v1.0 optional time/priority controls; contained in existing left panel */
+.constraint-settings{border:1px solid #d5e2fa;background:#f8fbff;border-radius:9px;margin:11px 0;padding:9px 10px}
+.constraint-settings>.check{margin:0;font-weight:700;color:#174ea6;font-size:12px}
+.constraint-settings #constraintFields{margin-top:10px}
+.constraint-settings #constraintFields[hidden],.schedule-summary[hidden]{display:none!important}
+.constraint-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.constraint-grid label{display:block;font-size:11px;font-weight:700;color:#334155;margin:0 0 4px}
+.constraint-grid input,.constraint-grid select{display:block;width:100%;min-width:0;padding:7px 6px;font-size:12px;border-radius:7px;border:1px solid #cbd5e1;background:#fff;color:#0f172a}
+.constraint-grid input:disabled{background:#f1f5f9;color:#94a3b8}
+.constraint-settings .help{font-size:11px;margin:10px 0 0;line-height:1.55}
+.schedule-summary{border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;padding:10px;border-radius:8px;font-size:12px;line-height:1.5;margin:0 0 9px}
+@media(max-width:450px){.constraint-grid{grid-template-columns:minmax(0,1fr)}}
+@media print{.constraint-settings,.schedule-summary{display:none!important}}
+
 @media(max-width:1150px){
   .workspace{grid-template-columns: minmax(220px,32fr) minmax(0,68fr);grid-template-rows:minmax(360px,1fr) auto}
   .itinerary-panel{grid-column:1 / -1;max-height:250px}
