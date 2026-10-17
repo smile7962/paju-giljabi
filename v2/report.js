@@ -203,10 +203,21 @@ function buildBodyPage() {
   right.append(person);
   top.append(left, right);
   paper.append(top, text("h1", "출장결과보고서"));
-  const intro = document.createElement("p");
+  // Match the actual three-cell HWPX purpose row:
+  // black fixed text / red editable purpose / black fixed text.
+  const intro = document.createElement("div");
   intro.className = "report-intro";
-  intro.textContent = "명에 의거 『" + noInfo(entry.purpose || draft.purpose) +
-    "』에 아래와 같이 출장하였기에 보고합니다.";
+  const purposeRow = document.createElement("div");
+  purposeRow.className = "purpose-row";
+  purposeRow.append(
+    text("span", "명에 의거 『", "purpose-prefix"),
+    text("span", noInfo(entry.purpose || draft.purpose), "purpose-value"),
+    text("span", "』에", "purpose-suffix")
+  );
+  intro.append(
+    purposeRow,
+    text("div", "아래와 같이 출장하였기에 보고합니다.", "purpose-followup")
+  );
   paper.append(intro);
 
   const heading = text("h2", "□ 개요", "section-title");
