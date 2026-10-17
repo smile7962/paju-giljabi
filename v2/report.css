@@ -151,3 +151,21 @@ textarea{line-height:1.55;resize:vertical}
 .hwpx-photo-option{display:flex!important;align-items:center;gap:8px;margin:10px 0!important;font-size:12px!important;cursor:pointer}
 .hwpx-photo-option input{width:17px;height:17px;accent-color:#155eef}
 @media print{.export-feedback{display:none!important}}
+
+/* v0.9 AI 연결: 토큰은 화면에만 보관, 합성자료 확인 후 요청 */
+.draft-panel input[type=password]{
+  width:100%;border:1px solid #cbd5e1;border-radius:8px;
+  padding:9px 8px;font-size:12px;background:#fff;
+}
+.draft-panel .ai-synthetic-confirm{
+  display:flex!important;gap:8px;align-items:flex-start;
+  background:#fff;border:1px solid #cbd5e1;border-radius:8px;
+  padding:10px;margin:8px 0!important;font-size:11px!important;
+  line-height:1.6;cursor:pointer
+}
+.draft-panel .ai-synthetic-confirm input{
+  width:17px;height:17px;flex:none;accent-color:#155eef
+}
+.draft-panel #aiTestResult{
+  padding:6px 2px;white-space:pre-wrap;overflow-wrap:anywhere
+}
