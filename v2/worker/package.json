@@ -1,0 +1,1 @@
+{"name":"tripon-worker-demo","private":true,"type":"module","scripts":{"test":"node --test ai-draft.test.mjs"}}
