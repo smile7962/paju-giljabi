@@ -26,13 +26,28 @@
     };
   }
 
-  async function aiDraft(endpoint, data) {
+  function syntheticSample() {
+    return {
+      purpose: "가상 건축현장 안전관리 현황 확인",
+      address: "시연용 가상현장 (실제 위치 아님)",
+      time: "2026. 10. 17. 14:00",
+      attendees: "가상 현장 관계자 1명",
+      check: "시연용 가상 건축현장 주변에 자재가 적치된 상황을 확인함",
+      action: "가상 현장 관계자에게 통행공간 정리를 요청함"
+    };
+  }
+
+  async function aiDraft(endpoint, data, token) {
     const url = new URL(String(endpoint || "").trim());
     if (url.protocol !== "https:" || !url.hostname || url.username || url.password || url.search || url.hash) {
       throw Error("기관에서 승인한 HTTPS AI 프록시 주소만 입력하세요. URL에 API 키·토큰을 포함하지 마세요.");
     }
     if (!(data.check || "").trim() && !(data.action || "").trim()) {
       throw Error("AI 초안을 만들 현장 확인내용이나 조치사항을 먼저 입력하세요.");
+    }
+    if (typeof token !== "string" || token.length < 32 || token.length > 256 ||
+        !/^[\x21-\x7E]+$/.test(token)) {
+      throw Error("AI 프록시 접근 토큰(32자 이상)을 입력하세요. 이 값은 브라우저에 저장하지 않습니다.");
     }
     const payload = {
       purpose: String(data.purpose || "").slice(0, 150),
@@ -48,11 +63,19 @@
     try {
       response = await fetch(url.href, {
         method: "POST", mode: "cors", cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify(payload), signal: controller.signal
       });
     } finally { clearTimeout(timer); }
-    if (!response.ok) throw Error("AI 서버 오류 (" + response.status + "). 프록시 설정을 확인하세요.");
+    if (!response.ok) {
+      const messages = {
+        401: "접근 토큰이 올바르지 않습니다.",
+        429: "AI 요청 횟수 제한에 도달했습니다. 잠시 후 재시도하세요.",
+        503: "AI 서버의 비밀키·호출 제한 설정이 필요합니다.",
+        502: "AI 모델 호출에 실패했습니다. 모델 권한·요금·설정을 확인하세요."
+      };
+      throw Error(messages[response.status] || "AI 서버 오류 (" + response.status + ").");
+    }
     const result = await response.json();
     if (!result || typeof result !== "object" ||
         typeof result.purpose !== "string" ||
@@ -62,8 +85,13 @@
     if (result.purpose.length > 150 || result.check.length > 5000 || result.action.length > 3000) {
       throw Error("AI 초안이 입력 허용 길이를 초과했습니다.");
     }
+    for (const key of ["purpose", "check", "action"]) {
+      if (!payload[key].trim() && result[key].trim()) {
+        throw Error("AI가 미입력 항목(" + key + ")에 사실을 추가하여 초안을 거부했습니다.");
+      }
+    }
     return { purpose: result.purpose, check: result.check, action: result.action };
   }
 
-  root.TripDraft = { localDraft, aiDraft };
+  root.TripDraft = { localDraft, aiDraft, syntheticSample };
 })(window);
