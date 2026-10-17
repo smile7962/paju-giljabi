@@ -36,9 +36,9 @@ textarea{line-height:1.55;resize:vertical}
 .paper .annex{margin-top:10mm;color:#475569;font-size:12px}
 .photo-page h1{text-align:left;font-size:20px;letter-spacing:0;margin-bottom:7mm}
 .photo-block{break-inside:avoid;margin:0 0 8mm;border:1px solid #cbd5e1;padding:3mm}
-.photo-block .photo-title{font-size:12px;font-weight:700;margin-bottom:2mm;overflow-wrap:anywhere}
+.photo-block .photo-title{font-size:12px;font-weight:700;margin-bottom:2mm;overflow-wrap:anywhere;text-align:center}
 .photo-block img{display:block;width:100%;height:84mm;object-fit:contain;background:#f8fafc}
-.photo-block .photo-caption{font-size:11px;margin-top:2mm;white-space:pre-wrap;overflow-wrap:anywhere}
+.photo-block .photo-caption{font-size:11px;margin-top:2mm;white-space:pre-wrap;overflow-wrap:anywhere;text-align:center}
 .right h3{font-size:13px;color:var(--navy);margin:7px 0 9px}.right hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .file-button{display:flex;align-items:center;justify-content:center;min-height:43px;padding:8px 10px;background:#eaf1ff;border-radius:8px;color:var(--blue);font-weight:800;font-size:13px;cursor:pointer}
 #photoFiles{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
@@ -76,6 +76,23 @@ textarea{line-height:1.55;resize:vertical}
 .official-report h1{font-size:21px;margin:7mm 0 4mm;text-align:center;letter-spacing:1.5px}
 .report-intro{font-size:13px;line-height:1.9;overflow-wrap:anywhere;margin:0 0 7mm}
 .official-report .section-title{font-size:15px;margin:0 0 3mm;border:0;padding:0}
+.official-report .purpose-row{
+  display:grid;
+  grid-template-columns:minmax(0,10023fr) minmax(0,35209fr) minmax(0,4365fr);
+  align-items:center;
+  width:100%;
+  min-height:21px;
+  gap:0
+}
+.official-report .purpose-prefix,.official-report .purpose-suffix{white-space:nowrap}
+.official-report .purpose-value{
+  text-align:center;
+  color:#d11d25;
+  overflow-wrap:anywhere;
+  padding:0 2mm
+}
+.official-report .purpose-followup{margin-top:1mm}
+
 .overview-lines{padding-left:4mm;font-size:13px}
 .report-line{margin:2mm 0;display:flex;gap:2mm;align-items:start;white-space:pre-wrap}
 .line-label{white-space:nowrap;flex:none}
