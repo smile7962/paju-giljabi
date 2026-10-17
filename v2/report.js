@@ -602,7 +602,9 @@ $("saveHwpx").addEventListener("click", async () => {
     }
     const selected = photos.filter(p => p.visitId === currentId);
     const include = $("includeHwpxPhotos").checked;
-    const attached = include ? selected : [];
+    const attached = include
+      ? selected.map(photo => ({ ...photo, visitName: stop.name }))
+      : [];
     if (attached.length > TripPhotos.LIMIT) {
       throw Error("한 출장지당 현장사진 " + TripPhotos.LIMIT + "장까지 첨부할 수 있습니다. 현재 " + attached.length + "장입니다.");
     }
