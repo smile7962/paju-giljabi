@@ -8,6 +8,7 @@
 (function (root) {
   "use strict";
   const NS = "http://www.hancom.co.kr/hwpml/2011/paragraph";
+  const HH = "http://www.hancom.co.kr/hwpml/2011/head";
   const children = (node, local) =>
     Array.from(node?.children || []).filter(child => child.localName === local);
   const first = (node, local) => children(node, local)[0] || null;
@@ -55,7 +56,31 @@
     }
     return value;
   }
-  function fillOriginal(xml, data) {
+  // Clone the ORIGINAL purpose paragraph style and change alignment only.
+  // Existing centered style 14 uses a slightly different line spacing (161%
+  // vs. the purpose cell's 160%), so a dedicated clone preserves typography.
+  async function addCenteredPurposeStyle(zip) {
+    const headerFile = zip.file("Contents/header.xml");
+    if (!headerFile) throw Error("원본 HWPX의 문단 서식 정보를 찾지 못했습니다.");
+    const dom = new DOMParser().parseFromString(await headerFile.async("string"), "application/xml");
+    if (dom.getElementsByTagName("parsererror").length) throw Error("HWPX 문단 서식 XML 오류");
+    const list = dom.getElementsByTagNameNS(HH, "paraProperties")[0];
+    if (!list) throw Error("HWPX 문단 서식 목록을 찾지 못했습니다.");
+    const entries = Array.from(list.getElementsByTagNameNS(HH, "paraPr"));
+    const source = entries.find(item => item.getAttribute("id") === "1");
+    if (!source) throw Error("원본 출장목적 문단 서식을 찾지 못했습니다.");
+    const id = Math.max(...entries.map(item => Number(item.getAttribute("id")))) + 1;
+    const centered = source.cloneNode(true);
+    centered.setAttribute("id", String(id));
+    const align = centered.getElementsByTagNameNS(HH, "align")[0];
+    if (!align) throw Error("출장목적 문단 정렬 속성을 찾지 못했습니다.");
+    align.setAttribute("horizontal", "CENTER");
+    list.appendChild(centered);
+    list.setAttribute("itemCnt", String(entries.length + 1));
+    zip.file("Contents/header.xml", new XMLSerializer().serializeToString(dom), { compression: "DEFLATE" });
+    return id;
+  }
+  function fillOriginal(xml, data, purposeStyleId = 14) {
     const dom = new DOMParser().parseFromString(xml, "application/xml");
     if (dom.getElementsByTagName("parsererror").length) {
       throw Error("HWPX 원본 XML을 읽지 못했습니다.");
@@ -92,6 +117,11 @@
     // reporting/approval dates, disclosure, signer and approval stamps.
     // Never modify it. Also preserve the BLACK introductory text verbatim.
     fillCell(body, 1, 1, purpose);
+    // Only center the red purpose text between the black fixed phrases.
+    // Keep its original red character style, cell size and every other value.
+    const purposeParagraph = paragraphs(cell(body, 1, 1))[0];
+    if (!purposeParagraph) throw Error("출장목적 입력 문단을 찾지 못했습니다.");
+    purposeParagraph.setAttribute("paraPrIDRef", String(purposeStyleId));
     const pp = paragraphs(cell(body, 3, 0));
     if (pp.length < 10 ||
         !content(cell(body, 3, 0)).includes("ㅇ 내용") ||
@@ -129,7 +159,8 @@
     const mime = (await zip.file("mimetype").async("string")).trim();
     if (mime !== "application/hwp+zip") throw Error("정상적인 HWPX 원본 파일이 아닙니다.");
     const original = await zip.file("Contents/section0.xml").async("string");
-    const filled = fillOriginal(original, data);
+    const purposeStyleId = await addCenteredPurposeStyle(zip);
+    const filled = fillOriginal(original, data, purposeStyleId);
     onProgress("출장결과보고서 본문 작성 완료");
     if (photoRecords.length > 0) {
       if (!root.TripPhotos) throw Error("현장사진 HWPX 모듈을 불러오지 못했습니다.");
