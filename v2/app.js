@@ -1,4 +1,4 @@
-/* 출장ON AI v0.2
+/* 출장ON AI v1.0
  * 기능 1: 주소 검색 → OSRM 도로경로 → Leaflet 표시
  * QR 인계 연결. AI·복명서는 별도 단계에서 연결한다.
  * 개인정보/비공개 출장정보를 공용 지도 API에 입력하지 말 것.
@@ -27,6 +27,54 @@ function setStatus(message, kind = "") {
   $("status").className = "status" + (kind ? " " + kind : "");
 }
 function shortLabel(s) { return s.length > 40 ? s.slice(0, 37) + "…" : s; }
+
+/* Optional time windows are indexed by the ORIGINAL one-line-per-stop input. */
+function scheduleSettings() {
+  return {
+    depart: $("departTime").value,
+    dwell: $("dwellMinutes").value,
+    priority: $("priorityStop").value,
+    appointment: $("appointmentStop").value,
+    appointmentTime: $("appointmentTime").value,
+    deadline: $("deadlineTime").value
+  };
+}
+function inputSnapshot() {
+  return JSON.stringify({
+    start: $("start").value.trim(),
+    stops: cleanLines($("locations").value),
+    keepOrder: $("keepOrder").checked,
+    constraints: $("useConstraints").checked,
+    settings: $("useConstraints").checked ? scheduleSettings() : null
+  });
+}
+function refreshConstraintStops() {
+  const lines = cleanLines($("locations").value);
+  for (const id of ["priorityStop", "appointmentStop"]) {
+    const sel = $(id);
+    const old = sel.value;
+    sel.replaceChildren(new Option("지정 안 함", "-1"));
+    lines.slice(0, MAX_STOPS).forEach((line, index) => {
+      sel.add(new Option((index + 1) + ". " + shortLabel(line), String(index)));
+    });
+    sel.value = lines[Number(old)] && old !== "-1" ? old : "-1";
+  }
+  $("appointmentTime").disabled = $("appointmentStop").value === "-1";
+}
+function showSchedule(result) {
+  const panel = $("scheduleSummary");
+  if (!result.schedule) {
+    panel.hidden = true;
+    panel.textContent = "";
+    return;
+  }
+  const plan = result.schedule;
+  panel.textContent = "출발 " + plan.departText + " → 예상 복귀 " + plan.returnText +
+    " · 현장 체류 " + formatDuration(plan.dwellSeconds) +
+    " · 대기 " + formatDuration(plan.waitSeconds) +
+    " · (도로이동은 OSRM 추정치)";
+  panel.hidden = false;
+}
 
 /* 카카오 주소/장소 검색 → OpenStreetMap 폴백은 geocode.js에서 담당 */
 const geocode = query => PajuGeo.geocode(query);
@@ -67,10 +115,20 @@ async function fetchRoute(points, keepOrder) {
   return { visits, path: trip.geometry.coordinates, km: trip.distance / 1000, seconds: trip.duration };
 }
 function showStops(origin, result) {
+  const schedule = result.schedule;
   const items = [
-    { addr: origin.label, type: "출발", home: true },
-    ...result.visits.map((point, index) => ({ addr: point.label, type: "방문지 " + (index + 1) })),
-    { addr: origin.label, type: "복귀", home: true }
+    { addr: origin.label, type: schedule ? "출발 · " + schedule.departText : "출발", home: true },
+    ...result.visits.map((point, index) => {
+      const time = schedule?.stops[index];
+      return {
+        addr: point.label,
+        type: "방문지 " + (index + 1) + (time
+          ? " · 도착 " + time.arrivalText + " / 업무 " + time.startText +
+            "~" + time.finishText + (time.waitMinutes ? " (대기 " + time.waitMinutes + "분)" : "")
+          : "")
+      };
+    }),
+    { addr: origin.label, type: schedule ? "복귀 · " + schedule.returnText : "복귀", home: true }
   ];
   const list = $("itinerary");
   list.replaceChildren();
@@ -155,10 +213,18 @@ async function calculate() {
   const start = $("start").value.trim();
   const stops = cleanLines($("locations").value);
   const keepOrder = $("keepOrder").checked;
+  const useConstraints = $("useConstraints").checked;
+  const settings = useConstraints ? scheduleSettings() : null;
+  const snapshot = inputSnapshot();
   if (!start) return setStatus("출발지를 입력하세요.", "error");
   if (!stops.length) return setStatus("방문지를 한 곳 이상 입력하세요.", "error");
   if (stops.length > MAX_STOPS) return setStatus("방문지는 최대 15곳까지 입력할 수 있습니다.", "error");
   if (new Set(stops).size !== stops.length) return setStatus("중복된 방문지를 확인하세요.", "error");
+  try {
+    if (useConstraints) TripSchedule.validate(settings, stops.length);
+  } catch (error) {
+    return setStatus(error.message, "error");
+  }
 
   running = true;
   $("calculate").disabled = true;
@@ -177,17 +243,29 @@ async function calculate() {
       points.push(await geocode(stops[i]));
     }
     setStatus("실제 도로망 기준 경로 계산 중…");
-    const result = await fetchRoute(points, keepOrder);
-    if (start !== $("start").value.trim() ||
-        stops.join("\n") !== cleanLines($("locations").value).join("\n") ||
-        keepOrder !== $("keepOrder").checked) {
+    let result;
+    if (useConstraints) {
+      setStatus("우선방문·방문약속·체류·복귀시간을 검토 중…");
+      const matrix = await TripSchedule.fetchMatrix(points, OSRM);
+      const schedule = TripSchedule.solve(matrix, settings, keepOrder);
+      const orderedPoints = [origin, ...schedule.order.map(index => points[index + 1])];
+      result = await fetchRoute(orderedPoints, true);
+      result.schedule = schedule;
+    } else {
+      result = await fetchRoute(points, keepOrder);
+    }
+    if (snapshot !== inputSnapshot()) {
       throw new Error("계산 중 출장조건이 변경되었습니다. 다시 계산해 주세요.");
     }
     showMap(origin, result);
     showStops(origin, result);
+    showSchedule(result);
     $("totalKm").textContent = result.km.toFixed(1) + "km";
     $("totalTime").textContent = formatDuration(result.seconds);
-    setStatus("계산 완료 · " + (result.visits.length) + "개소 / OSRM 도로망 추정치. 방문 시간약속·우선방문 제약은 아직 반영하지 않습니다.", "success");
+    setStatus("계산 완료 · " + result.visits.length + "개소 / " +
+      (useConstraints
+        ? "우선방문·방문약속·체류·복귀시간 반영. 도로망 추정이며 휴리스틱 경로 탐색으로 전역 최적해는 보장하지 않습니다."
+        : "OSRM 최적경로. 시간약속·현장 체류시간은 반영하지 않았습니다."), "success");
     $("print").disabled = false;
     const simple = p => [p.label, +p.lat.toFixed(6), +p.lng.toFixed(6)];
     const tripId = "t-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
@@ -206,6 +284,7 @@ async function calculate() {
     setStatus(error.message || "계산 중 오류가 발생했습니다.", "error");
     $("totalKm").textContent = "—";
     $("totalTime").textContent = "—";
+    $("scheduleSummary").hidden = true;
   } finally {
     running = false;
     $("calculate").disabled = false;
@@ -221,6 +300,7 @@ function invalidatePlan() {
   $("itinerary").replaceChildren();
   $("totalKm").textContent = "—";
   $("totalTime").textContent = "—";
+  $("scheduleSummary").hidden = true;
   if (mapState.path) {
     mapState.map.removeLayer(mapState.path);
     mapState.path = null;
@@ -230,13 +310,29 @@ function invalidatePlan() {
   setStatus("출장조건이 변경되었습니다. 경로를 다시 계산해 주세요.");
 }
 ["start", "locations"].forEach(id => $(id).addEventListener("input", invalidatePlan));
+$("locations").addEventListener("input", refreshConstraintStops);
 $("keepOrder").addEventListener("change", invalidatePlan);
+$("useConstraints").addEventListener("change", () => {
+  $("constraintFields").hidden = !$("useConstraints").checked;
+  invalidatePlan();
+});
+for (const id of ["departTime", "dwellMinutes", "deadlineTime", "appointmentTime"]) {
+  $(id).addEventListener("input", invalidatePlan);
+}
+for (const id of ["priorityStop", "appointmentStop"]) {
+  $(id).addEventListener("change", () => {
+    $("appointmentTime").disabled = $("appointmentStop").value === "-1";
+    invalidatePlan();
+  });
+}
+refreshConstraintStops();
 
 $("calculate").addEventListener("click", calculate);
 $("sample").addEventListener("click", () => {
   invalidatePlan();
   $("start").value = "파주시청";
   $("locations").value = "경기도 파주시 탄현면 헤이리마을길 82-105\n경기도 파주시 문산읍 임진각로 177\n경기도 파주시 가온로 184";
+  refreshConstraintStops();
   setStatus("실제 소재지의 도로명주소 3개소를 입력했습니다. 경로계산을 실행하세요.");
 });
 $("fitMap").addEventListener("click", () => {
