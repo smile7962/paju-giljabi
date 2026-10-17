@@ -1,7 +1,8 @@
 /* 출장ON AI v0.8 · original HWPX photo annex
  * Only appends HWPX image paragraphs and a matching BinData/manifest entry.
  * Does not change the user's existing approval table, text styles or report body.
- * 1 photo/page; no upload/network/LLM call. First release requires Hancom validation.
+ * Two photo cards per attachment page; each card is a genuine bordered HWPX table.
+ * No upload/network/LLM call. Hancom rendering requires verification.
  */
 (function (root) {
   "use strict";
@@ -24,8 +25,9 @@
   }
   function dimensions(w, h) {
     if (!(w > 0 && h > 0)) throw Error("사진 크기를 읽을 수 없습니다.");
-    // HWP unit 7200/in: 150 mm wide, 150 mm high maximum; keep aspect ratio.
-    const scale = Math.min(42520 / w, 42520 / h);
+    // HWP unit 7200/in. Two photos per A4 page: max 143 mm wide, 60 mm high.
+    // Reserve room for the card title, caption, borders and spacing.
+    const scale = Math.min(40500 / w, 17000 / h);
     return { w: Math.max(1000, Math.round(w * scale)), h: Math.max(1000, Math.round(h * scale)) };
   }
   function safeCaption(value) {
@@ -79,6 +81,68 @@
     node(doc, "hp:outMargin", pic, { left: 0, right: 0, top: 0, bottom: 0 });
     node(doc, "hp:t", parent); // Critical: an empty text element AFTER picture
   }
+  /* Render each photo as ONE true HWPX table (1 column x 1 row).
+   * Reuse borderFillIDRef=3, the original template's solid four-sided border.
+   * pageBreak=NONE prevents internal table splitting in Hancom.
+   */
+  function photoCard(doc, section, photo, id, image, seq, count) {
+    const base = 910000 + seq * 10;
+    const hostRun = para(doc, section, "", {
+      id: base, paraPr: 14, charPr: 8
+    });
+    const tableWidth = 46000; // ~162 mm, within the original page text width
+    const cardHeight = 26900; // ~95 mm; two cards + heading fit on A4
+    const table = node(doc, "hp:tbl", hostRun, {
+      id: 850000 + seq, zOrder: 0, numberingType: "TABLE",
+      textWrap: "TOP_AND_BOTTOM", textFlow: "BOTH_SIDES",
+      lock: 0, dropcapstyle: "None", pageBreak: "NONE",
+      repeatHeader: 0, rowCnt: 1, colCnt: 1,
+      cellSpacing: 0, borderFillIDRef: 3, noAdjust: 1
+    });
+    node(doc, "hp:sz", table, {
+      width: tableWidth, widthRelTo: "ABSOLUTE",
+      height: cardHeight, heightRelTo: "ABSOLUTE", protect: 0
+    });
+    node(doc, "hp:pos", table, {
+      treatAsChar: 1, affectLSpacing: 0,
+      flowWithText: 1, allowOverlap: 0, holdAnchorAndSO: 1,
+      vertRelTo: "PARA", horzRelTo: "COLUMN",
+      vertAlign: "TOP", horzAlign: "CENTER",
+      vertOffset: 0, horzOffset: 0
+    });
+    node(doc, "hp:outMargin", table, { left: 0, right: 0, top: 0, bottom: 0 });
+    node(doc, "hp:inMargin", table, { left: 0, right: 0, top: 0, bottom: 0 });
+    const row = node(doc, "hp:tr", table);
+    const cell = node(doc, "hp:tc", row, {
+      name: "", header: 0, hasMargin: 1, protect: 0,
+      editable: 1, dirty: 0, borderFillIDRef: 3
+    });
+    const subList = node(doc, "hp:subList", cell, {
+      id: "", textDirection: "HORIZONTAL", lineWrap: "BREAK",
+      vertAlign: "CENTER", linkListIDRef: 0, linkListNextIDRef: 0,
+      textWidth: 0, textHeight: 0, hasTextRef: 0, hasNumRef: 0
+    });
+    const visit = String(photo.visitName || "").trim().slice(0, 75);
+    para(doc, subList,
+      (visit ? visit + "  ·  " : "") + "현장사진 " + seq + "/" + count,
+      { id: base + 1, paraPr: 15, charPr: 8 }
+    );
+    const imageRun = para(doc, subList, "", {
+      id: base + 2, paraPr: 14, charPr: 8
+    });
+    picture(doc, imageRun, id, image.w, image.h, seq);
+    para(doc, subList, safeCaption(photo.caption), {
+      id: base + 3, paraPr: 15, charPr: 8
+    });
+    node(doc, "hp:cellAddr", cell, { colAddr: 0, rowAddr: 0 });
+    node(doc, "hp:cellSpan", cell, { colSpan: 1, rowSpan: 1 });
+    node(doc, "hp:cellSz", cell, { width: tableWidth, height: cardHeight });
+    node(doc, "hp:cellMargin", cell, {
+      left: 330, right: 330, top: 240, bottom: 240
+    });
+    node(doc, "hp:t", hostRun); // keep following text node as source tables do
+  }
+
   function canvasToBlob(canvas) {
     return new Promise((resolve, reject) => canvas.toBlob(blob =>
       blob ? resolve(blob) : reject(Error("JPEG 변환에 실패했습니다.")), "image/jpeg", 0.8));
@@ -157,14 +221,17 @@
       let img;
       try { img = await jpg(photo); }
       catch (error) { throw Error((photo.name || "사진 " + seq) + ": " + error.message); }
-      const caption = safeCaption(photo.caption);
-      para(sectionDoc, section, "붙임 · 현장사진 " + seq + "/" + selectedPhotos.length, { id: 880000 + seq * 3, pageBreak: true, paraPr: 15, charPr: 8 });
-      para(sectionDoc, section, caption, { id: 880001 + seq * 3, paraPr: 15, charPr: 8 });
-      // This picture is inline (treatAsChar=1), so Hancom uses PARAGRAPH alignment.
-      // Original template paraPr 14 is centered; 15 is justified.
-      // Both styles are otherwise identical: preserve the original formatting.
-      const run = para(sectionDoc, section, "", { id: 880002 + seq * 3, paraPr: 14, charPr: 8 });
-      picture(sectionDoc, run, id, img.w, img.h, seq);
+      // Start a new annex page only before photos 1, 3, 5, ...
+      // The second photo on each page flows into the available space.
+      if (index % 2 === 0) {
+        const pageFrom = seq;
+        const pageTo = Math.min(seq + 1, selectedPhotos.length);
+        para(sectionDoc, section,
+          "붙임 · 현장사진 (" + pageFrom + "–" + pageTo + "/" + selectedPhotos.length + ")",
+          { id: 900000 + seq, pageBreak: true, paraPr: 15, charPr: 8 }
+        );
+      }
+      photoCard(sectionDoc, section, photo, id, img, seq, selectedPhotos.length);
       node(packageDoc, "opf:item", manifest, {
         id, href: path, "media-type": "image/jpeg", isEmbeded: "1"
       });
