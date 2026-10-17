@@ -126,9 +126,20 @@ function init() {
     $("count").textContent = data.visits.length + "개소";
     $("distance").textContent = data.km.toFixed(1) + "km";
     $("duration").textContent = duration(data.seconds);
-    addRow(data.origin.label, "출발", "출", true);
-    data.visits.forEach((p, i) => addRow(p.label, "방문지 " + (i + 1), i + 1, false));
-    addRow(data.origin.label, "복귀", "↩", true);
+    const plan = data.schedule &&
+      Array.isArray(data.schedule.stops) &&
+      data.schedule.stops.length === data.visits.length ? data.schedule : null;
+    addRow(data.origin.label, plan ? "출발 · " + plan.departText : "출발", "출", true);
+    data.visits.forEach((p, i) => {
+      const time = plan?.stops[i];
+      const note = time
+        ? "방문지 " + (i + 1) + " · 도착 " + time.arrivalText +
+          " / 현장 " + time.startText + "~" + time.finishText +
+          (time.waitMinutes ? " (대기 " + time.waitMinutes + "분)" : "")
+        : "방문지 " + (i + 1);
+      addRow(p.label, note, i + 1, false);
+    });
+    addRow(data.origin.label, plan ? "예상 복귀 · " + plan.returnText : "복귀", "↩", true);
     createQr(data);
     drawRoute(data);
   } catch (error) { fail(error.message || "경로표 생성 오류"); }
