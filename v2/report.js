@@ -109,7 +109,12 @@ function showDraftResult(result, source) {
 }
 function selectStop(id) {
   if (!stops.some(s => s.id === id)) return;
-  if (currentId !== id) dismissDraft();
+  if (currentId !== id) {
+    dismissDraft();
+    $("aiSyntheticConfirmed").checked = false;
+    $("generateAiDraft").disabled = true;
+    $("aiTestResult").textContent = "새 출장지를 선택했습니다. AI 전송 여부를 다시 확인하세요.";
+  }
   currentId = id;
   const stop = stops.find(s => s.id === id);
   const entry = resultFor(id);
@@ -509,12 +514,39 @@ async function start() {
   $(id).addEventListener("input", () => {
     if (draftContext) {
       dismissDraft();
-      $("draftStatus").textContent = "원본 내용이 변경되어 기존 초안을 취소했습니다. 다시 생성하세요.";
+      $("aiSyntheticConfirmed").checked = false;
+      $("generateAiDraft").disabled = true;
+      $("draftStatus").textContent = "원본 내용이 변경되어 기존 초안을 취소했습니다. 합성자료를 재확인 후 생성하세요.";
     }
     saveCurrent(); renderVisits(); renderDocument();
   });
 });
 $("aiEndpoint").value = localStorage.getItem("tripon-ai-endpoint") || "";
+// Deliberately never save the access token to localStorage, a file, or the URL.
+$("aiAccessToken").value = "";
+$("aiSyntheticConfirmed").checked = false;
+$("aiSyntheticConfirmed").addEventListener("change", () => {
+  $("generateAiDraft").disabled = !$("aiSyntheticConfirmed").checked;
+  if (!$("aiSyntheticConfirmed").checked) dismissDraft();
+});
+$("testAiConnection").addEventListener("click", async () => {
+  const button = $("testAiConnection");
+  if (button.disabled) return;
+  button.disabled = true;
+  $("aiTestResult").textContent = "가상의 건축현장 메모로 AI 서버를 시험 중입니다…";
+  try {
+    const source = TripDraft.syntheticSample();
+    const output = await TripDraft.aiDraft(
+      $("aiEndpoint").value.trim(), source, $("aiAccessToken").value
+    );
+    $("aiTestResult").textContent =
+      "연결 성공 · 시연용 AI 문장: " + (output.check || "(현장 확인내용 없음)") +
+      " / " + (output.action || "(조치사항 없음)") +
+      " · 실제 보고서에는 적용하지 않았습니다.";
+  } catch (error) {
+    $("aiTestResult").textContent = "연결 시험 실패: " + (error.message || "서버 설정 확인 필요");
+  } finally { button.disabled = false; }
+});
 $("aiEndpoint").addEventListener("change", () => {
   try {
     const input = $("aiEndpoint").value.trim();
@@ -536,7 +568,11 @@ $("localDraft").addEventListener("click", () => {
 $("generateAiDraft").addEventListener("click", async () => {
   const endpoint = $("aiEndpoint").value.trim();
   if (!endpoint) {
-    $("draftStatus").textContent = "AI 프록시가 연결되지 않았습니다. 아래 로컬 문장 정리 기능을 이용하거나 기관 승인 프록시를 설정하세요.";
+    $("draftStatus").textContent = "AI 프록시가 연결되지 않았습니다. 로컬 정리 기능을 이용하거나 승인된 프록시를 설정하세요.";
+    return;
+  }
+  if (!$("aiSyntheticConfirmed").checked) {
+    $("draftStatus").textContent = "합성자료 확인 체크 후에만 외부 AI로 내용을 전송할 수 있습니다.";
     return;
   }
   if (!confirm("현장메모와 장소·시간·참석정보가 외부 AI 프록시로 전송됩니다. 개인정보·비공개 민원자료가 없고 기관에서 승인된 연결인지 확인했습니까?")) return;
@@ -546,8 +582,9 @@ $("generateAiDraft").addEventListener("click", async () => {
   btn.disabled = true;
   $("draftStatus").textContent = "AI 초안을 요청하고 있습니다…";
   try {
-    const result = await TripDraft.aiDraft(endpoint, source);
-    if (currentId !== stopId || JSON.stringify(currentDraftInput()) !== JSON.stringify(source)) {
+    const result = await TripDraft.aiDraft(endpoint, source, $("aiAccessToken").value);
+    if (!$("aiSyntheticConfirmed").checked ||
+        currentId !== stopId || JSON.stringify(currentDraftInput()) !== JSON.stringify(source)) {
       $("draftStatus").textContent = "AI 응답을 기다리는 동안 방문지·원본메모가 변경돼 결과를 폐기했습니다.";
       return;
     }
