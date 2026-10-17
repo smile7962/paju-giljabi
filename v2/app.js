@@ -233,6 +233,7 @@ async function calculate() {
   confirmedTrip = null;
   printableRoute = null;
   $("printQr").removeAttribute("src");
+  $("scheduleSummary").hidden = true;
   try {
     ensureMap();
     setStatus("출발지 주소 확인 중…");
@@ -277,6 +278,7 @@ async function calculate() {
       path: result.path,
       km: result.km,
       seconds: result.seconds,
+      schedule: result.schedule || null,
       trip: confirmedTrip
     };
     $("confirm").disabled = false;
