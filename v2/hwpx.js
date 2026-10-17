@@ -92,6 +92,13 @@
     // reporting/approval dates, disclosure, signer and approval stamps.
     // Never modify it. Also preserve the BLACK introductory text verbatim.
     fillCell(body, 1, 1, purpose);
+    // Red purpose text is in the wide CENTER cell between the original
+    // black phrases '명에 의거 『' and '』에'.  Original paraPr 1 and 14
+    // have identical layout settings except horizontal alignment.
+    // Only center this single value paragraph; preserve its red charPr.
+    const purposeParagraph = paragraphs(cell(body, 1, 1))[0];
+    if (!purposeParagraph) throw Error("출장목적 입력 문단을 찾지 못했습니다.");
+    purposeParagraph.setAttribute("paraPrIDRef", "14");
     const pp = paragraphs(cell(body, 3, 0));
     if (pp.length < 10 ||
         !content(cell(body, 3, 0)).includes("ㅇ 내용") ||
