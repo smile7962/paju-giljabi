@@ -161,7 +161,8 @@ function showStops(origin, result) {
         addr: point.label,
         type: "방문지 " + (index + 1) + (time
           ? " · 도착 " + time.arrivalText + " / 업무 " + time.startText +
-            "~" + time.finishText + (time.waitMinutes ? " (대기 " + time.waitMinutes + "분)" : "")
+            "~" + time.finishText + (time.appointment ? " · 약속 " + time.startText : "") +
+            (time.waitMinutes ? " (대기 " + time.waitMinutes + "분)" : "")
           : "")
       };
     }),
