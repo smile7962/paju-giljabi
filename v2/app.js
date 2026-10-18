@@ -1,4 +1,4 @@
-/* 출장ON AI v1.0
+/* 출장ON AI v1.1
  * 기능 1: 주소 검색 → OSRM 도로경로 → Leaflet 표시
  * QR 인계 연결. AI·복명서는 별도 단계에서 연결한다.
  * 개인정보/비공개 출장정보를 공용 지도 API에 입력하지 말 것.
@@ -34,8 +34,10 @@ function scheduleSettings() {
     depart: $("departTime").value,
     dwell: $("dwellMinutes").value,
     priority: $("priorityStop").value,
-    appointment: $("appointmentStop").value,
-    appointmentTime: $("appointmentTime").value,
+    stops: Array.from($("perStopSettings").children).map(row => ({
+      dwell: row.querySelector(".stop-dwell").value,
+      appointment: row.querySelector(".stop-appointment").value
+    })),
     deadline: $("deadlineTime").value
   };
 }
@@ -49,17 +51,52 @@ function inputSnapshot() {
   });
 }
 function refreshConstraintStops() {
-  const lines = cleanLines($("locations").value);
-  for (const id of ["priorityStop", "appointmentStop"]) {
-    const sel = $(id);
-    const old = sel.value;
-    sel.replaceChildren(new Option("지정 안 함", "-1"));
-    lines.slice(0, MAX_STOPS).forEach((line, index) => {
-      sel.add(new Option((index + 1) + ". " + shortLabel(line), String(index)));
-    });
-    sel.value = lines[Number(old)] && old !== "-1" ? old : "-1";
-  }
-  $("appointmentTime").disabled = $("appointmentStop").value === "-1";
+  const lines = cleanLines($("locations").value).slice(0, MAX_STOPS);
+  const list = $("perStopSettings");
+  const previous = Array.from(list.children);
+  const earlierPlaces = previous.map(row => row.dataset.place);
+  const oldPriority = Number($("priorityStop").value);
+  const chosenPriorityPlace = earlierPlaces[oldPriority] || "";
+  const retained = new Map(previous.map(row => [
+    row.dataset.place,
+    {
+      dwell: row.querySelector(".stop-dwell").value,
+      appointment: row.querySelector(".stop-appointment").value
+    }
+  ]));
+  const selection = $("priorityStop");
+  selection.replaceChildren(new Option("지정 안 함", "-1"));
+  const rows = [];
+  lines.forEach((place, index) => {
+    selection.add(new Option((index + 1) + ". " + shortLabel(place), String(index)));
+    const values = retained.get(place) || {};
+    const row = document.createElement("div");
+    row.className = "visit-setting-row";
+    row.dataset.place = place;
+    const name = document.createElement("strong");
+    name.className = "visit-setting-name";
+    name.textContent = (index + 1) + ". " + place;
+    name.title = place;
+    const dwell = document.createElement("input");
+    dwell.type = "number";
+    dwell.min = "0"; dwell.max = "180"; dwell.step = "5";
+    dwell.placeholder = "기본값";
+    dwell.className = "stop-dwell";
+    dwell.value = values.dwell || "";
+    dwell.setAttribute("aria-label", place + " 체류시간(분), 비워두면 기본값");
+    const appointment = document.createElement("input");
+    appointment.type = "time";
+    appointment.className = "stop-appointment";
+    appointment.value = values.appointment || "";
+    appointment.setAttribute("aria-label", place + " 방문약속 시작시간");
+    dwell.addEventListener("input", invalidatePlan);
+    appointment.addEventListener("input", invalidatePlan);
+    row.append(name, dwell, appointment);
+    rows.push(row);
+  });
+  list.replaceChildren(...rows);
+  const chosen = lines.indexOf(chosenPriorityPlace);
+  selection.value = chosen >= 0 ? String(chosen) : "-1";
 }
 function showSchedule(result) {
   const panel = $("scheduleSummary");
@@ -265,7 +302,7 @@ async function calculate() {
     $("totalTime").textContent = formatDuration(result.seconds);
     setStatus("계산 완료 · " + result.visits.length + "개소 / " +
       (useConstraints
-        ? "우선방문·방문약속·체류·복귀시간 반영. 도로망 추정이며 휴리스틱 경로 탐색으로 전역 최적해는 보장하지 않습니다."
+        ? "우선방문·여러 방문약속·개별 체류·복귀시간 반영. 도로망 추정이며 휴리스틱 경로 탐색으로 전역 최적해는 보장하지 않습니다."
         : "OSRM 최적경로. 시간약속·현장 체류시간은 반영하지 않았습니다."), "success");
     $("print").disabled = false;
     const simple = p => [p.label, +p.lat.toFixed(6), +p.lng.toFixed(6)];
@@ -318,15 +355,10 @@ $("useConstraints").addEventListener("change", () => {
   $("constraintFields").hidden = !$("useConstraints").checked;
   invalidatePlan();
 });
-for (const id of ["departTime", "dwellMinutes", "deadlineTime", "appointmentTime"]) {
+for (const id of ["departTime", "dwellMinutes", "deadlineTime"]) {
   $(id).addEventListener("input", invalidatePlan);
 }
-for (const id of ["priorityStop", "appointmentStop"]) {
-  $(id).addEventListener("change", () => {
-    $("appointmentTime").disabled = $("appointmentStop").value === "-1";
-    invalidatePlan();
-  });
-}
+$("priorityStop").addEventListener("change", invalidatePlan);
 refreshConstraintStops();
 
 $("calculate").addEventListener("click", calculate);
