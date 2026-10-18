@@ -91,6 +91,26 @@ textarea{resize:vertical;min-height:160px}
 @media(max-width:450px){.constraint-grid{grid-template-columns:minmax(0,1fr)}}
 @media print{.constraint-settings,.schedule-summary{display:none!important}}
 
+
+/* v1.1: address-bound schedule table, multiple appointment times */
+.per-stop-head{font-size:12px;font-weight:800;color:#17366c;margin:13px 0 5px}
+.per-stop-settings{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.visit-setting-row{
+  display:grid;grid-template-columns:minmax(0,1.5fr) minmax(76px,.65fr) minmax(90px,.8fr);
+  gap:6px;align-items:center;padding:7px;
+  border:1px solid #d6deea;border-radius:8px;background:#fff
+}
+.visit-setting-name{font-size:11px;line-height:1.4;overflow-wrap:anywhere;font-weight:600;color:#102a56}
+.visit-setting-row input{
+  display:block;width:100%;min-width:0;border:1px solid #cbd5e1;
+  background:#fff;color:#0f172a;border-radius:6px;padding:7px 5px;font-size:11px
+}
+.visit-setting-row input:focus-visible{outline:2px solid #155eef;outline-offset:1px}
+@media(max-width:580px){
+  .visit-setting-row{grid-template-columns:1fr 1fr}
+  .visit-setting-name{grid-column:1/-1}
+}
+
 @media(max-width:1150px){
   .workspace{grid-template-columns: minmax(220px,32fr) minmax(0,68fr);grid-template-rows:minmax(360px,1fr) auto}
   .itinerary-panel{grid-column:1 / -1;max-height:250px}
