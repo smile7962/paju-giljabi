@@ -28,7 +28,7 @@
         <span>2 현장출장</span>
         <a href="./report.html" class="step-link">3 출장결과보고</a>
       </nav>
-      <span class="version">v1.0 · 시간제약 경로</span>
+      <span class="version">v1.1 · 방문지별 일정</span>
     </header>
 
     <main class="workspace">
@@ -40,7 +40,7 @@
         <div class="panel-content">
           <div class="notice">
             <strong>현재 연결된 기능</strong>
-            카카오 장소명·주소 검색과 OpenStreetMap 보조 검색, 실제 도로망 경로계산을 제공합니다. 출장지별 우선순위·방문약속·체류시간·복귀시간을 도로망 이동시간에 반영할 수 있습니다. 생성형 AI 보고서 초안은 승인된 프록시가 있을 때만 사용합니다.
+            카카오 장소명·주소 검색과 OpenStreetMap 보조 검색, 실제 도로망 경로계산을 제공합니다. 출장지별 체류시간·여러 장소의 방문약속·우선방문·복귀시각을 도로망 이동시간에 반영할 수 있습니다. 생성형 AI 보고서 초안은 승인된 프록시가 있을 때만 사용합니다.
           </div>
           <label for="start">출발 · 복귀지</label>
           <input id="start" type="text" value="경기도 파주시청" autocomplete="street-address">
@@ -60,7 +60,7 @@
                   <input type="time" id="departTime" value="09:00">
                 </div>
                 <div>
-                  <label for="dwellMinutes">방문지별 체류시간(분)</label>
+                  <label for="dwellMinutes">기본 체류시간(분)</label>
                   <input type="number" min="0" max="180" step="5" value="20" id="dwellMinutes">
                 </div>
                 <div>
@@ -71,16 +71,12 @@
                   <label for="deadlineTime">최종 복귀시각(선택)</label>
                   <input type="time" id="deadlineTime">
                 </div>
-                <div>
-                  <label for="appointmentStop">방문약속 장소(선택)</label>
-                  <select id="appointmentStop"><option value="-1">지정 안 함</option></select>
-                </div>
-                <div>
-                  <label for="appointmentTime">방문약속 시작시각</label>
-                  <input type="time" id="appointmentTime" disabled>
-                </div>
+
               </div>
-              <p class="help">약속장소에는 지정시각보다 늦지 않게 도착하도록 계산합니다. 일찍 도착하면 대기하고, 기본 체류시간은 모든 출장지에 동일하게 적용합니다. <strong>실시간 교통·야간 출장은 반영하지 않습니다.</strong></p>
+              <div class="per-stop-head">출장지별 체류시간·방문약속</div>
+              <p class="help">출장지마다 체류시간과 약속 시작시각을 선택할 수 있습니다. 체류시간을 비우면 위 기본값을 사용하고, 약속을 비우면 시간제약 없이 방문합니다.</p>
+              <div id="perStopSettings" class="per-stop-settings" aria-label="출장지별 개별 설정"></div>
+              <p class="help">약속시각보다 늦게 도착하는 순서는 제외합니다. 일찍 도착하면 현장에서 대기합니다. <strong>실시간 교통·야간 출장은 반영하지 않습니다.</strong></p>
             </div>
           </div>
           <p class="help">일반 계산은 기존 OSRM 순서 최적화를 유지합니다. 시간제약을 켜면 OSRM 이동시간 행렬로 방문 순서를 탐색합니다.</p>
