@@ -95,6 +95,7 @@ textarea{resize:vertical;min-height:160px}
 /* v1.1: address-bound schedule table, multiple appointment times */
 .per-stop-head{font-size:12px;font-weight:800;color:#17366c;margin:13px 0 5px}
 .per-stop-settings{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.stop-setting-columns{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(76px,.65fr) minmax(90px,.8fr);gap:6px;padding:0 7px;font-size:10px;font-weight:700;color:#64748b}
 .visit-setting-row{
   display:grid;grid-template-columns:minmax(0,1.5fr) minmax(76px,.65fr) minmax(90px,.8fr);
   gap:6px;align-items:center;padding:7px;
@@ -107,6 +108,7 @@ textarea{resize:vertical;min-height:160px}
 }
 .visit-setting-row input:focus-visible{outline:2px solid #155eef;outline-offset:1px}
 @media(max-width:580px){
+  .stop-setting-columns{display:none}
   .visit-setting-row{grid-template-columns:1fr 1fr}
   .visit-setting-name{grid-column:1/-1}
 }
