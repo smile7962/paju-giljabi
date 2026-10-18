@@ -53,3 +53,65 @@ test("15 visits appear once each", () => {
   assert.equal(result.order.length, 15);
   assert.equal(new Set(result.order).size, 15);
 });
+test("v1.1: two appointments and three independent dwell times", () => {
+  const result = solve(m, {
+    depart: "09:00", dwell: "20", priority: "1", deadline: "12:00",
+    stops: [
+      { dwell: "35", appointment: "11:00" },
+      { dwell: "10", appointment: "" },
+      { dwell: "25", appointment: "10:00" }
+    ]
+  });
+  assert.equal(result.order.join(","), "1,2,0");
+  assert.equal(result.dwellSeconds, 70 * 60);
+  assert.equal(result.waitSeconds, 35 * 60);
+  assert.equal(result.returnText, "11:45");
+  assert.equal(result.stops.find(x => x.index === 2).startText, "10:00");
+  assert.equal(result.stops.find(x => x.index === 0).startText, "11:00");
+});
+test("v1.1: conflicting appointments reject the route", () => {
+  const changed = {
+    depart: "09:00", dwell: 20, priority: 1, deadline: "12:00",
+    stops: [
+      { dwell: 35, appointment: "10:10" },
+      { dwell: 10, appointment: "" },
+      { dwell: 25, appointment: "10:00" }
+    ]
+  };
+  assert.throws(() => solve(m, changed), /경로를 찾지 못했습니다/);
+});
+test("v1.1: blank overrides use default dwell and no appointment", () => {
+  const values = validate({
+    depart: "09:00", dwell: "20", priority: "-1", deadline: "",
+    stops: [
+      { dwell: "", appointment: "" },
+      { dwell: "5", appointment: "11:00" },
+      { dwell: "", appointment: "" }
+    ]
+  }, 3);
+  assert.equal(values.dwellSeconds.join(","), [1200,300,1200].join(","));
+  assert.equal(values.appointments.filter(x => x !== null).length, 1);
+});
+test("v1.1: mismatched stop settings and impossible time are rejected", () => {
+  const base = {depart: "09:00", dwell: "20", priority: "-1", deadline: ""};
+  assert.throws(() => validate({ ...base, stops: [{dwell:10,appointment:""}]}, 3), /개수가/);
+  assert.throws(() => validate({ ...base, stops: [
+    {dwell:"200",appointment:""}, {dwell:"",appointment:""}, {dwell:"",appointment:""}
+  ]}, 3), /체류시간/);
+  assert.throws(() => validate({ ...base, stops: [
+    {dwell:"",appointment:"08:00"}, {dwell:"",appointment:""}, {dwell:"",appointment:""}
+  ]}, 3), /출발시간보다/);
+});
+test("v1.1: fixed input order can satisfy two appointments", () => {
+  const result = solve(m, {
+    depart:"09:00", dwell:"20", priority:"0", deadline:"15:00",
+    stops:[
+      {dwell:"10",appointment:""},
+      {dwell:"15",appointment:"10:30"},
+      {dwell:"10",appointment:"11:30"}
+    ]
+  },true);
+  assert.equal(result.order.join(","),"0,1,2");
+  assert.equal(result.stops.find(s=>s.index===1).startText,"10:30");
+  assert.equal(result.stops.find(s=>s.index===2).startText,"11:30");
+});

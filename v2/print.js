@@ -135,6 +135,7 @@ function init() {
       const note = time
         ? "방문지 " + (i + 1) + " · 도착 " + time.arrivalText +
           " / 현장 " + time.startText + "~" + time.finishText +
+          (time.appointment ? " · 약속 " + time.startText : "") +
           (time.waitMinutes ? " (대기 " + time.waitMinutes + "분)" : "")
         : "방문지 " + (i + 1);
       addRow(p.label, note, i + 1, false);
