@@ -132,7 +132,7 @@ export default {
               generationConfig: {
                 temperature: 0,
                 responseFormat: {
-                  text: { mimeType: "application/json", schema: {
+                  text: { mimeType: "APPLICATION_JSON", schema: {
                     type: "object",
                     properties: {
                       purpose: { type: "string" }, check: { type: "string" }, action: { type: "string" }

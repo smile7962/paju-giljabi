@@ -631,3 +631,10 @@ v1.0에서 모든 출장지에 동일하게 적용하던 체류시간과 하나�
 - GitHub Actions `v2-ci.yml`에서 Node 22 JS 문법·전체 기존 회귀시험·브라우저 리소스/키 저장금지 정적 검사를 실행합니다.
 - 검증 순서 및 실기기 체크리스트: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - 테스트와 GitHub Pages 배포가 모두 성공해도 실제 Gemini API 키 응답·브라우저 CORS, 파주시 원본 HWPX 한글 렌더링 및 기관 외부전송 승인은 별도로 확인해야 합니다.
+
+## v1.5.1 — Gemini HTTP 400 JSON MIME 설정 수정 (2026-10-19)
+
+- 브라우저 Gemini 직접 연결 및 보안 프록시 Worker의 `generationConfig.responseFormat.text.mimeType`을 Google GenerateContent API 열거형 `APPLICATION_JSON`으로 수정했습니다. 이전 값 `application/json`은 HTTP 콘텐츠 타입 표기로, 해당 열거형 필드의 유효값이 아니므로 HTTP 400 오류가 발생할 수 있었습니다.
+- Google 공식 문서: [GenerateContent API · TextResponseFormat / MimeType](https://ai.google.dev/api/generate-content) (`APPLICATION_JSON`).
+- Node 회귀시험에서 요청 직렬화된 MIME enum 및 HTTP 400 모의 응답을 검증합니다.
+- 실 API 키는 저장하거나 AI 자동검증에 입력하지 않았습니다. 실제 호출 성공 여부는 GitHub Pages에서 Ctrl+F5 후 별도 **합성자료로 AI 연결 테스트**로 검증해야 합니다.

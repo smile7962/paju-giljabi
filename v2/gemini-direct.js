@@ -71,7 +71,7 @@
     return output;
   }
   function providerMessage(status) {
-    if (status === 400) return "Gemini 요청 형식 오류입니다. 선택한 모델을 확인하세요.";
+    if (status === 400) return "Gemini 요청 설정 오류(HTTP 400): JSON 출력 형식과 모델별 지원 설정을 확인하세요.";
     if (status === 401 || status === 403) return "Gemini API 키 또는 해당 프로젝트의 API 접근권한을 확인하세요.";
     if (status === 404) return "선택한 Gemini 모델에 접근할 수 없습니다. 다른 모델을 선택하세요.";
     if (status === 429) return "Gemini API 사용량 제한에 도달했습니다. 잠시 후 다시 시도하세요.";
@@ -105,7 +105,7 @@
           contents: [{ role: "user", parts: [{ text: JSON.stringify(input) }] }],
           generationConfig: {
             temperature: 0,
-            responseFormat: { text: { mimeType: "application/json", schema: SCHEMA } }
+            responseFormat: { text: { mimeType: "APPLICATION_JSON", schema: SCHEMA } }
           }
         })
       });

@@ -44,7 +44,7 @@ test("model choice produces Gemini API request with server-compatible schema", a
   assert.equal(calls[0].options.referrerPolicy,"no-referrer");
   assert.ok(!calls[0].options.body.includes(key));
   const outbound=JSON.parse(calls[0].options.body);
-  assert.equal(outbound.generationConfig.responseFormat.text.mimeType,"application/json");
+  assert.equal(outbound.generationConfig.responseFormat.text.mimeType,"APPLICATION_JSON");
   assert.equal(outbound.generationConfig.responseFormat.text.schema.additionalProperties,false);
   assert.deepEqual(outbound.generationConfig.responseFormat.text.schema.required,
     ["purpose","check","action"]);
@@ -95,4 +95,16 @@ test("direct module never persists a credential or logs it", () => {
   assert.ok(!/\b(?:localStorage|sessionStorage)\s*\./.test(source));
   assert.ok(!/\bconsole\s*\./.test(source));
   assert.ok(source.includes("x-goog-api-key"));
+});
+
+test("structured-output MIME uses Google REST enum, not HTTP content-type string (400 regression)", async () => {
+  const direct=harness(async (url, options) => {
+    const body=JSON.parse(options.body);
+    if (body.generationConfig.responseFormat?.text?.mimeType !== "APPLICATION_JSON") {
+      return mock({error:"Unsupported MIME enum"},400);
+    }
+    return sampleResult();
+  });
+  const result=await direct.request(key,"gemini-3.5-flash-lite",synthetic);
+  assert.equal(result.check,output.check);
 });

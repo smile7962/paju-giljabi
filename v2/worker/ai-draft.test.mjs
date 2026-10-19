@@ -91,7 +91,7 @@ test("Gemini outbound payload uses documented responseFormat JSON schema, never 
     assert.match(call.url, /models\/gemini-3\.5-flash-lite:generateContent$/);
     assert.equal(call.options.headers["x-goog-api-key"], env.GEMINI_API_KEY);
     const generation = call.body.generationConfig;
-    assert.equal(generation.responseFormat.text.mimeType, "application/json");
+    assert.equal(generation.responseFormat.text.mimeType, "APPLICATION_JSON");
     assert.deepEqual(generation.responseFormat.text.schema.required, ["purpose", "check", "action"]);
     assert.deepEqual(Object.keys(generation.responseFormat.text.schema.properties),
       ["purpose", "check", "action"]);
