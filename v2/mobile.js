@@ -263,7 +263,8 @@ function renderPhotos() {
     li.append(img, details);
     list.append(li);
   });
-  $("sharePhotos").disabled = photos.length === 0;
+  // Text-only field records can also be shared when no photos were taken.
+  $("sharePhotos").disabled = false;
 }
 function downloadPhoto(photo) {
   const url = URL.createObjectURL(photo.blob);
