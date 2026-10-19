@@ -26,22 +26,22 @@ function planTime(minutes) {
     String(minutes % 60).padStart(2, "0");
 }
 function unpack(payload) {
-  const schedule = payload[4];
+  const schedule = TripIO.readSchedule(payload);
   return {
     id: payload[1],
     origin: { name: payload[2][0], lat: payload[2][1], lng: payload[2][2] },
-    depart: schedule ? planTime(schedule[0]) : null,
-    returnAt: schedule ? planTime(schedule[1]) : null,
+    depart: schedule ? planTime(schedule.depart) : null,
+    returnAt: schedule ? planTime(schedule.returnAt) : null,
     stops: payload[3].map((p, i) => ({
       id: "S" + String(i + 1).padStart(2, "0"),
       name: p[0], lat: p[1], lng: p[2],
       planned: schedule ? {
-        arrival: planTime(schedule[2][i][0]),
-        start: planTime(schedule[2][i][1]),
-        finish: planTime(schedule[2][i][2]),
-        appointment: schedule[2][i][3] === 1,
-        wait: schedule[2][i][1] - schedule[2][i][0],
-        dwell: schedule[2][i][2] - schedule[2][i][1]
+        arrival: planTime(schedule.stops[i][0]),
+        start: planTime(schedule.stops[i][1]),
+        finish: planTime(schedule.stops[i][2]),
+        appointment: schedule.stops[i][3] === 1,
+        wait: schedule.stops[i][1] - schedule.stops[i][0],
+        dwell: schedule.stops[i][2] - schedule.stops[i][1]
       } : null
     }))
   };
