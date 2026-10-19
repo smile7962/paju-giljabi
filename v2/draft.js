@@ -37,6 +37,14 @@
     };
   }
 
+  function field(value, label, maxLength) {
+    const result = String(value ?? "");
+    if (result.length > maxLength) {
+      throw Error(label + "이(가) " + maxLength + "자를 초과했습니다. 초안을 요청하기 전에 줄여 주세요.");
+    }
+    return result;
+  }
+
   async function aiDraft(endpoint, data, token) {
     const url = new URL(String(endpoint || "").trim());
     if (url.protocol !== "https:" || !url.hostname || url.username || url.password || url.search || url.hash) {
@@ -50,12 +58,12 @@
       throw Error("AI 프록시 접근 토큰(32자 이상)을 입력하세요. 이 값은 브라우저에 저장하지 않습니다.");
     }
     const payload = {
-      purpose: String(data.purpose || "").slice(0, 150),
-      address: String(data.address || "").slice(0, 150),
-      visitTime: String(data.time || "").slice(0, 100),
-      attendees: String(data.attendees || "").slice(0, 150),
-      check: String(data.check || "").slice(0, 4000),
-      action: String(data.action || "").slice(0, 2500)
+      purpose: field(data.purpose, "출장목적", 150),
+      address: field(data.address, "출장주소", 150),
+      visitTime: field(data.time, "출장일시", 100),
+      attendees: field(data.attendees, "참석자", 150),
+      check: field(data.check, "현장 확인내용", 4000),
+      action: field(data.action, "조치사항", 2500)
     };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 25000);
@@ -66,15 +74,27 @@
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify(payload), signal: controller.signal
       });
+    } catch (error) {
+      if (controller.signal.aborted) throw Error("25초 내에 AI 서버가 응답하지 않았습니다.");
+      throw Error("AI 프록시에 연결할 수 없습니다. 배포된 주소·CORS 설정·네트워크를 확인하세요.");
     } finally { clearTimeout(timer); }
     if (!response.ok) {
-      const messages = {
-        401: "접근 토큰이 올바르지 않습니다.",
-        429: "AI 요청 횟수 제한에 도달했습니다. 잠시 후 재시도하세요.",
-        503: "AI 서버의 비밀키·호출 제한 설정이 필요합니다.",
-        502: "AI 모델 호출에 실패했습니다. 모델 권한·요금·설정을 확인하세요."
+      const defaults = {
+        400: "AI 요청을 처리할 수 없습니다.",
+        401: "AI 프록시 접근 토큰이 올바르지 않습니다.",
+        403: "허용되지 않은 웹사이트 또는 접근입니다.",
+        413: "AI 요청 용량을 초과했습니다.",
+        429: "AI 요청 횟수 제한에 도달했습니다.",
+        503: "AI 서버 비밀키·호출 제한 설정이 필요합니다.",
+        502: "Gemini API 모델·키·사용량을 확인하세요.",
+        504: "Gemini 응답 시간이 초과됐습니다."
       };
-      throw Error(messages[response.status] || "AI 서버 오류 (" + response.status + ").");
+      let serverError = "";
+      try {
+        const body = await response.json();
+        if (typeof body?.error === "string") serverError = body.error.slice(0, 250);
+      } catch (_) { /* Fallback to generic status message */ }
+      throw Error(serverError || defaults[response.status] || "AI 서버 오류 (" + response.status + ").");
     }
     const result = await response.json();
     if (!result || typeof result !== "object" ||

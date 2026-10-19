@@ -1,0 +1,9 @@
+# Never commit local server secrets or Cloudflare working directories
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+.wrangler/
+node_modules/
+*.log
