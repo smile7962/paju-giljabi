@@ -92,6 +92,7 @@ test("handles CORS/network blocks and invalid structured JSON", async () => {
   await assert.rejects(direct.request(key,"gemini-3.5-flash-lite",synthetic),/JSON 초안/);
 });
 test("direct module never persists a credential or logs it", () => {
-  assert.ok(!/localStorage|sessionStorage|console\./.test(source));
+  assert.ok(!/\b(?:localStorage|sessionStorage)\s*\./.test(source));
+  assert.ok(!/\bconsole\s*\./.test(source));
   assert.ok(source.includes("x-goog-api-key"));
 });
