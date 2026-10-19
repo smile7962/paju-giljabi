@@ -497,10 +497,59 @@ async function start() {
     saveCurrent(); renderVisits(); renderDocument();
   });
 });
+// Security: retain Gemini API key ONLY in an unsaved password input.
+let aiSettingsRevision = 0;
+function aiMode() { return $("aiMode").value; }
+function invalidateAiResult(note) {
+  aiSettingsRevision++;
+  dismissDraft();
+  $("aiSyntheticConfirmed").checked = false;
+  $("generateAiDraft").disabled = true;
+  if (note) $("draftStatus").textContent = note;
+}
+function updateAiMode() {
+  const direct = aiMode() === "direct";
+  $("aiDirectSettings").hidden = !direct;
+  $("aiProxySettings").hidden = direct;
+  // Switching away from direct mode discards the credential.
+  if (!direct) $("aiDirectKey").value = "";
+  invalidateAiResult(direct
+    ? "Gemini 직접 연결은 합성 시연 전용입니다. API 키 입력 후 먼저 합성자료 연결 시험을 하세요."
+    : "보안 프록시 모드입니다. 승인된 Worker 주소 및 서버 토큰을 입력하세요.");
+}
+async function requestCurrentAi(source) {
+  if (aiMode() === "direct") {
+    // Never send the actual trip's address, time or participants in direct mode.
+    // The authored demo notes/purpose/actions must ALSO be entirely synthetic.
+    return TripGeminiDirect.request($("aiDirectKey").value, $("aiModel").value, {
+      ...source, address: "시연용 가상현장", time: "가상 시연일시",
+      attendees: "가상 관계자"
+    });
+  }
+  return TripDraft.aiDraft(
+    $("aiEndpoint").value.trim(), source, $("aiAccessToken").value
+  );
+}
+$("aiMode").value = "proxy"; // fail safe: do not persist the direct mode
+$("aiModel").value = "gemini-3.5-flash-lite";
 $("aiEndpoint").value = localStorage.getItem("tripon-ai-endpoint") || "";
-// Deliberately never save the access token to localStorage, a file, or the URL.
 $("aiAccessToken").value = "";
+$("aiDirectKey").value = "";
+$("aiDirectSettings").hidden = true;
+$("aiProxySettings").hidden = false;
 $("aiSyntheticConfirmed").checked = false;
+$("aiMode").addEventListener("change", updateAiMode);
+$("aiModel").addEventListener("change", () =>
+  invalidateAiResult("모델이 변경됐습니다. 합성자료 전송을 다시 확인하세요."));
+$("aiDirectKey").addEventListener("input", () =>
+  invalidateAiResult("API 키 입력이 변경됐습니다. 합성자료 연결을 다시 시험할 수 있습니다."));
+$("aiAccessToken").addEventListener("input", () =>
+  invalidateAiResult("프록시 토큰이 변경됐습니다. 외부 전송을 다시 확인하세요."));
+$("clearAiDirectKey").addEventListener("click", () => {
+  $("aiDirectKey").value = "";
+  invalidateAiResult("입력된 Gemini API 키를 지웠습니다.");
+});
+window.addEventListener("pagehide", () => { $("aiDirectKey").value = ""; });
 $("aiSyntheticConfirmed").addEventListener("change", () => {
   $("generateAiDraft").disabled = !$("aiSyntheticConfirmed").checked;
   if (!$("aiSyntheticConfirmed").checked) dismissDraft();
@@ -508,19 +557,25 @@ $("aiSyntheticConfirmed").addEventListener("change", () => {
 $("testAiConnection").addEventListener("click", async () => {
   const button = $("testAiConnection");
   if (button.disabled) return;
+  const mode = aiMode();
+  const revision = aiSettingsRevision;
   button.disabled = true;
-  $("aiTestResult").textContent = "가상의 건축현장 메모로 AI 서버를 시험 중입니다…";
+  $("aiTestResult").textContent = "가상의 건축현장 메모로 " +
+    (mode === "direct" ? "Gemini 직접 연결" : "승인된 프록시") + " 시험 중입니다…";
   try {
-    const source = TripDraft.syntheticSample();
-    const output = await TripDraft.aiDraft(
-      $("aiEndpoint").value.trim(), source, $("aiAccessToken").value
-    );
+    const output = await requestCurrentAi(TripDraft.syntheticSample());
+    if (aiSettingsRevision !== revision || aiMode() !== mode) {
+      $("aiTestResult").textContent = "시험 중 연결 설정이 변경되어 결과를 폐기했습니다.";
+      return;
+    }
     $("aiTestResult").textContent =
-      "연결 성공 · 시연용 AI 문장: " + (output.check || "(현장 확인내용 없음)") +
-      " / " + (output.action || "(조치사항 없음)") +
-      " · 실제 보고서에는 적용하지 않았습니다.";
+      "연결 성공 (" + (mode === "direct" ? $("aiModel").value : "보안 프록시") +
+      ") · 가상 확인내용: " + (output.check || "(없음)") +
+      " · 가상 조치: " + (output.action || "(없음)") +
+      " · 실제 보고서에는 반영하지 않았습니다.";
   } catch (error) {
-    $("aiTestResult").textContent = "연결 시험 실패: " + (error.message || "서버 설정 확인 필요");
+    $("aiTestResult").textContent = "연결 시험 실패: " +
+      (error.message || "AI 접속 상태 확인 필요");
   } finally { button.disabled = false; }
 });
 $("aiEndpoint").addEventListener("change", () => {
@@ -528,13 +583,18 @@ $("aiEndpoint").addEventListener("change", () => {
     const input = $("aiEndpoint").value.trim();
     if (input) {
       const parsed = new URL(input);
-      if (parsed.protocol !== "https:" || parsed.search || parsed.hash || parsed.username || parsed.password) {
+      if (parsed.protocol !== "https:" || parsed.search || parsed.hash ||
+          parsed.username || parsed.password) {
         throw Error("HTTPS 주소만 입력하세요. URL에 API 키·토큰·쿼리값을 넣지 마세요.");
       }
     }
     localStorage.setItem("tripon-ai-endpoint", input);
-    $("draftStatus").textContent = input ? "AI 프록시 주소가 저장됐습니다. 실제 연결 및 기관 승인 여부를 확인하세요." : "AI 연결이 해제됐습니다.";
-  } catch (err) { $("draftStatus").textContent = err.message || "AI 프록시 주소 오류"; }
+    invalidateAiResult(input
+      ? "AI 프록시 주소를 저장했습니다. 실제 연결과 기관 승인을 확인하세요."
+      : "AI 프록시 주소를 지웠습니다.");
+  } catch (error) {
+    $("draftStatus").textContent = error.message || "AI 프록시 주소 오류";
+  }
 });
 $("localDraft").addEventListener("click", () => {
   try {
@@ -542,32 +602,40 @@ $("localDraft").addEventListener("click", () => {
   } catch (err) { $("draftStatus").textContent = err.message; }
 });
 $("generateAiDraft").addEventListener("click", async () => {
-  const endpoint = $("aiEndpoint").value.trim();
-  if (!endpoint) {
-    $("draftStatus").textContent = "AI 프록시가 연결되지 않았습니다. 로컬 정리 기능을 이용하거나 승인된 프록시를 설정하세요.";
+  const mode = aiMode();
+  if (mode === "proxy" && !$("aiEndpoint").value.trim()) {
+    $("draftStatus").textContent = "AI 프록시가 연결되지 않았습니다. 서버 URL을 설정하거나 직접 시연 모드를 선택하세요.";
     return;
   }
-  if (!$("aiSyntheticConfirmed").checked) {
-    $("draftStatus").textContent = "합성자료 확인 체크 후에만 외부 AI로 내용을 전송할 수 있습니다.";
+  if (!($("aiSyntheticConfirmed").checked)) {
+    $("draftStatus").textContent = "전체 내용이 합성자료임을 확인하고 외부 전송에 동의해야 합니다.";
     return;
   }
-  if (!confirm("현장메모와 장소·시간·참석정보가 외부 AI 프록시로 전송됩니다. 개인정보·비공개 민원자료가 없고 기관에서 승인된 연결인지 확인했습니까?")) return;
+  const message = mode === "direct"
+    ? "이 보고서의 목적·현장메모·조치에 실제 민원·주소·개인정보가 없으며 모두 가상자료입니까? 직접 연결 시 브라우저에 API 키가 노출될 수 있고, 메모는 Google Gemini로 전송됩니다. 진행하시겠습니까?"
+    : "현장메모·장소·시간·참석 정보가 외부 AI 프록시로 전송됩니다. 모두 합성자료이고 기관에서 승인한 연결인지 확인했습니까?";
+  if (!confirm(message)) return;
   const source = currentDraftInput();
-  const stopId = currentId;
-  const btn = $("generateAiDraft");
-  btn.disabled = true;
-  $("draftStatus").textContent = "AI 초안을 요청하고 있습니다…";
+  const stopId = currentId, tripId = trip.id, revision = aiSettingsRevision;
+  const button = $("generateAiDraft");
+  button.disabled = true;
+  $("draftStatus").textContent = "AI 초안 생성 중입니다…";
   try {
-    const result = await TripDraft.aiDraft(endpoint, source, $("aiAccessToken").value);
-    if (!$("aiSyntheticConfirmed").checked ||
-        currentId !== stopId || JSON.stringify(currentDraftInput()) !== JSON.stringify(source)) {
-      $("draftStatus").textContent = "AI 응답을 기다리는 동안 방문지·원본메모가 변경돼 결과를 폐기했습니다.";
+    const result = await requestCurrentAi(source);
+    if (!$("aiSyntheticConfirmed").checked || currentId !== stopId ||
+        trip.id !== tripId || aiMode() !== mode ||
+        aiSettingsRevision !== revision ||
+        JSON.stringify(currentDraftInput()) !== JSON.stringify(source)) {
+      $("draftStatus").textContent = "AI 응답 중 방문지·원본 메모·연결 설정이 변경돼 결과를 폐기했습니다.";
       return;
     }
-    showDraftResult(result, "생성형 AI");
-  } catch (err) {
-    $("draftStatus").textContent = "AI 요청 실패: " + (err.message || "연결 상태 확인 필요");
-  } finally { btn.disabled = false; }
+    showDraftResult(result, mode === "direct" ? "Gemini 직접 연결(합성 시연)" : "보안 프록시 AI");
+  } catch (error) {
+    $("draftStatus").textContent = "AI 초안 요청 실패: " +
+      (error.message || "AI 연결 상태 확인 필요");
+  } finally {
+    button.disabled = !$("aiSyntheticConfirmed").checked;
+  }
 });
 $("applyDraft").addEventListener("click", () => {
   if (!draftContext || draftContext.tripId !== trip.id || draftContext.visitId !== currentId ||

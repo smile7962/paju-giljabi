@@ -11,6 +11,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   <script src="./photo-hwpx.js" defer></script>
   <script src="./hwpx.js" defer></script>
+  <script src="./gemini-direct.js" defer></script>
   <script src="./draft.js" defer></script>
   <script src="./report.js" defer></script>
 </head>
@@ -22,7 +23,7 @@
       <span>② 현장출장</span>
       <strong aria-current="step">③ 출장결과보고</strong>
     </nav>
-    <span class="edition">v1.4 · AI 연결 검증·배포 준비</span>
+    <span class="edition">v1.5 · Gemini 직접·프록시 연결 선택</span>
   </header>
   <div id="noPlan" class="no-plan" hidden>
     <h1>확정된 출장계획을 찾지 못했습니다.</h1>
@@ -96,16 +97,37 @@
           <h3 id="draftHeading">문장 초안 · 담당자 확인</h3>
           <p class="helper">현재 메모를 정리해 미리보기로 표시합니다. 승인 전에는 작성내용을 변경하지 않습니다.</p>
           <button id="localDraft" type="button" class="btn outline">현장메모 문장 정리 (로컬)</button>
-          <label for="aiEndpoint">승인된 AI 프록시 주소</label>
-          <p class="helper">이 화면에 AI 서버가 자동으로 연결되는 것은 아닙니다. Cloudflare Worker 배포와 비밀키 설정 후, 합성자료로 연결을 확인해야 합니다. <a href="https://github.com/smile7962/paju-giljabi/blob/main/v2/worker/SETUP.md" target="_blank" rel="noopener noreferrer">AI 서버 설치·설정 안내</a></p>
-          <input id="aiEndpoint" type="url" autocomplete="off" spellcheck="false" placeholder="https://작업자주소.workers.dev/draft">
-          <label for="aiAccessToken">AI 프록시 접근 토큰 (화면을 닫으면 지워짐)</label>
-          <input id="aiAccessToken" type="password" autocomplete="off" spellcheck="false" placeholder="관리자가 발급한 32자 이상의 접근 토큰">
+          <label for="aiMode">AI 연결 방식 선택</label>
+          <select id="aiMode" aria-describedby="aiModeHelp">
+            <option value="proxy">보안 프록시 연결 (기관 승인 환경)</option>
+            <option value="direct">Gemini API 직접 연결 (합성자료 시연 전용)</option>
+          </select>
+          <p id="aiModeHelp" class="helper">직접 연결은 별도 Cloudflare 서버가 필요하지 않지만, 브라우저에서 API 키가 노출될 수 있어 실제 업무자료에 사용하면 안 됩니다.</p>
+          <div id="aiDirectSettings" class="ai-mode-settings" hidden>
+            <label for="aiModel">Gemini 모델</label>
+            <select id="aiModel">
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (기본·경량)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (고성능)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (기존 이용자만 가능할 수 있음)</option>
+            </select>
+            <label for="aiDirectKey">Gemini API 키 — 이 탭에서만 입력</label>
+            <input id="aiDirectKey" type="password" autocomplete="new-password" spellcheck="false"
+              placeholder="Google AI Studio API 키 (여기에만 입력)" aria-describedby="aiDirectWarning">
+            <button id="clearAiDirectKey" type="button" class="btn outline">입력된 API 키 지우기</button>
+            <p id="aiDirectWarning" class="helper"><strong>시연 전용:</strong> API 키는 저장되지 않지만 브라우저 개발자도구·확장프로그램 등에서 접근할 수 있습니다. 별도의 제한된 시험용 키를 사용하고 실제 민원·현장·개인정보를 입력하지 마세요. 사진과 HWPX는 AI로 전송하지 않습니다.</p>
+          </div>
+          <div id="aiProxySettings" class="ai-mode-settings">
+            <label for="aiEndpoint">승인된 AI 프록시 주소</label>
+            <p class="helper">Cloudflare Worker 등 서버 배포와 비밀키 설정이 필요합니다. <a href="https://github.com/smile7962/paju-giljabi/blob/main/v2/worker/SETUP.md" target="_blank" rel="noopener noreferrer">AI 서버 설치·설정 안내</a></p>
+            <input id="aiEndpoint" type="url" autocomplete="off" spellcheck="false" placeholder="https://작업자주소.workers.dev/draft">
+            <label for="aiAccessToken">AI 프록시 접근 토큰 (화면을 닫으면 지워짐)</label>
+            <input id="aiAccessToken" type="password" autocomplete="new-password" spellcheck="false" placeholder="관리자가 발급한 32자 이상의 접근 토큰">
+          </div>
           <button id="testAiConnection" type="button" class="btn outline">합성자료로 AI 연결 테스트</button>
           <p id="aiTestResult" role="status" class="helper">실제 출장내용을 전송하지 않고 가상 현장자료만 사용해 시험합니다.</p>
           <label class="ai-synthetic-confirm" for="aiSyntheticConfirmed">
             <input id="aiSyntheticConfirmed" type="checkbox">
-            <span>현재 작성 내용은 모두 합성자료이며 외부 AI 전송에 동의합니다. 무료 Gemini 등급에서는 제공자 정책에 따라 입력내용이 제품 개선에 사용될 수 있습니다.</span>
+            <span>현재 출장목적·주소·참석자·확인·조치의 모든 내용은 개인정보 없는 합성 시연자료입니다. 외부 Gemini 전송에 동의합니다. 무료 등급 자료는 제공자 제품 개선에 사용될 수 있습니다.</span>
           </label>
           <button id="generateAiDraft" type="button" class="btn outline" disabled>생성형 AI 초안 요청</button>
           <p class="helper"><strong>중요:</strong> 기관 승인 전에는 실제 민원·현장·개인정보를 AI에 보내지 마세요. 사진·HWPX는 전송하지 않으며, AI 문장은 담당자 확인 후에만 반영됩니다.</p>
