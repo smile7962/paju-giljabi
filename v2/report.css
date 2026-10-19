@@ -169,3 +169,9 @@ textarea{line-height:1.55;resize:vertical}
 .draft-panel #aiTestResult{
   padding:6px 2px;white-space:pre-wrap;overflow-wrap:anywhere
 }
+
+/* v1.3 field TXT import */
+.memo-import-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.memo-import-row .file-button,.memo-import-row .btn{flex:1 1 155px;text-align:center}
+.memo-import-row input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+@media print{.memo-import-row{display:none!important}}
