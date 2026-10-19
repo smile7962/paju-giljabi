@@ -35,3 +35,18 @@ textarea{resize:vertical;min-height:90px;width:100%;padding:12px;border:1px soli
 .nav-fallback-actions a:hover{background:#eaf1ff}
 .nav-fallback-actions a[hidden]{display:none!important}
 .navbox .navbuttons button{color:#102a56;background:#fff;white-space:normal;padding:5px}
+
+
+/* v1.2 · PC-confirmed estimated times, not actual field records */
+.mobile-schedule{padding:13px 16px;background:#eef5ff;border-top:1px solid #dae7ff;border-bottom:1px solid #dae7ff}
+.mobile-schedule .schedule-header{display:flex;align-items:baseline;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.mobile-schedule h2{font-size:14px;color:#102a56;margin:0}
+.mobile-schedule #plannedReturn{font-size:11px;color:#475569}
+.mobile-schedule .current-planned-times{font-size:13px;font-weight:700;line-height:1.65;color:#174ea6;margin-top:8px;overflow-wrap:anywhere}
+.mobile-schedule .schedule-warning{font-size:11px;line-height:1.5;color:#64748b;margin:7px 0 6px}
+.mobile-schedule .schedule-all summary{cursor:pointer;color:#174ea6;font-size:12px;font-weight:700;min-height:32px;padding-top:6px}
+.mobile-schedule .schedule-all ol{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mobile-schedule .schedule-all li{padding:8px;background:white;border:1px solid #d6e2fa;border-radius:8px;display:flex;flex-direction:column;gap:4px}
+.mobile-schedule .schedule-all li.active{border:2px solid #155eef}
+.mobile-schedule .schedule-all li strong{font-size:12px;line-height:1.45;color:#102a56;word-break:keep-all}
+.mobile-schedule .schedule-all li span{font-size:11px;line-height:1.5;color:#475569}
