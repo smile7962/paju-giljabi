@@ -8,21 +8,42 @@
       typeof p[1] === "number" && p[1] >= 33 && p[1] <= 39 &&
       typeof p[2] === "number" && p[2] >= 124 && p[2] <= 132;
   }
-  // Optional fifth field for planned times (minute-of-day integers):
-  // [departure, return, [[arrival, start, finish, appointmentFlag], ...]]
-  // Preserve v1 four-field links, and do not add personal notes or photos.
+  // Optional fifth field: compact 10 ASCII chars per stop:
+  // arrival(3 base36) + start(3 base36) + finish(3 base36) + appointment(0/1).
+  // No photos, memos or actual field records enter the QR.
   const validMinute = n => Number.isInteger(n) && n >= 0 && n < 1440;
+  function packRow(row) {
+    return row.slice(0, 3).map(n => n.toString(36).padStart(3, "0")).join("") +
+      String(row[3]);
+  }
+  function unpackRow(packed) {
+    return [0, 3, 6].map(at => parseInt(packed.slice(at, at + 3), 36))
+      .concat(Number(packed[9]));
+  }
+  function readSchedule(payload) {
+    const data = check(payload);
+    if (data.length === 4) return null;
+    const plan = data[4];
+    return {
+      depart: plan[0],
+      returnAt: plan[1],
+      stops: Array.from({ length: data[3].length }, (_, i) =>
+        unpackRow(plan[2].slice(i * 10, i * 10 + 10)))
+    };
+  }
   function validSchedule(plan, count) {
     if (!Array.isArray(plan) || plan.length !== 3 ||
         !validMinute(plan[0]) || !validMinute(plan[1]) ||
-        plan[1] < plan[0] || !Array.isArray(plan[2]) || plan[2].length !== count) return false;
+        plan[1] < plan[0] || typeof plan[2] !== "string" ||
+        plan[2].length !== count * 10 || !/^[0-9a-z]+$/.test(plan[2])) return false;
     let previousFinish = plan[0];
-    for (const times of plan[2]) {
-      if (!Array.isArray(times) || times.length !== 4 ||
+    for (let i = 0; i < count; i++) {
+      const segment = plan[2].slice(i * 10, i * 10 + 10);
+      const times = unpackRow(segment);
+      if (!["0", "1"].includes(segment[9]) ||
           !times.slice(0, 3).every(validMinute) ||
-          ![0, 1].includes(times[3]) ||
-          times[0] < previousFinish ||
-          times[1] < times[0] || times[2] < times[1] || times[2] > plan[1]) return false;
+          times[0] < previousFinish || times[1] < times[0] ||
+          times[2] < times[1] || times[2] > plan[1]) return false;
       previousFinish = times[2];
     }
     return true;
@@ -54,10 +75,10 @@
     }
     const times = [
       asMinute(schedule.departText), asMinute(schedule.returnText),
-      schedule.stops.map(row => [
+      schedule.stops.map(row => packRow([
         asMinute(row.arrivalText), asMinute(row.startText),
         asMinute(row.finishText), row.appointment ? 1 : 0
-      ])
+      ])).join("")
     ];
     return check([...baseline, times]);
   }
@@ -93,5 +114,5 @@
     url.hash = "trip=" + encoded;
     return url.href;
   }
-  root.TripIO = { encode, decode, locationLink, withSchedule, qrLink };
+  root.TripIO = { encode, decode, locationLink, withSchedule, readSchedule, qrLink };
 })(window);
