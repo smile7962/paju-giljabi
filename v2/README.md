@@ -1,6 +1,6 @@
 # 출장ON AI v1.5 — Gemini 직접 시연 / 보안 프록시 선택 및 출장복명
 
-기존 [파주길잡이](https://smile7962.github.io/paju-giljabi/)에 새 기능을 추가하는 개발 브랜치입니다.
+기존 [파주길잡이](https://smile7962.github.io/paju-giljabi/)의 루트 화면을 보존하고 `main/v2/`에서 별도로 이용하는 출장ON AI입니다.
 Claude가 만든 원본 디자인 시안은 [design/claude-prototype.html](../design/claude-prototype.html)에 보존했습니다.
 
 **코드 원칙:** 빌드 도구·서버·회원가입 없이 HTML / CSS / 순수 JavaScript로 구성합니다.
@@ -32,7 +32,7 @@ Claude가 만든 원본 디자인 시안은 [design/claude-prototype.html](../de
 
 ## 개발 중 PC 화면 실행
 
-1. GitHub에서 `feature/trip-on-ai` 브랜치의 ZIP을 다운로드합니다.
+1. GitHub의 `main` 브랜치에서 ZIP을 내려받거나 [배포된 출장ON AI](https://smile7962.github.io/paju-giljabi/v2/)를 엽니다.
 2. 압축 해제 후 `v2/index.html`을 Chrome 또는 Edge에서 엽니다.
 3. 예시 입력 또는 실제 **공개 가능한 테스트 주소**를 입력하고 `방문지 검색 및 경로계산`을 누릅니다.
 4. 경로가 계산되면 `출장계획 확정 · QR`을 누릅니다.
@@ -40,13 +40,13 @@ Claude가 만든 원본 디자인 시안은 [design/claude-prototype.html](../de
 
 ## 실제 휴대폰 QR 테스트를 위한 배포
 
-**현재 기본 GitHub Pages에는 기존 파주길잡이만 배포되어 있습니다.** `feature/trip-on-ai`의 `v2/`는 아직 배포되지 않았습니다.
+**GitHub Pages에는 기존 파주길잡이와 출장ON AI `v2/`가 함께 배포되어 있습니다.** GitHub Pages 최신 배포 작업 성공 여부는 [Actions](https://github.com/smile7962/paju-giljabi/actions)에서 확인합니다.
 
-휴대폰 테스트를 하려면 먼저 `v2/` 파일을 HTTPS 주소에 배포해야 합니다. 기존 사이트를 보존하려면 테스트를 마친 뒤 개발 브랜치의 `v2/` 폴더를 `main`에 병합하는 방식이 간단합니다. 그러면 다음 주소로 접근 가능합니다.
+휴대폰 QR 테스트는 다음 HTTPS 주소에서 시작합니다. 브라우저와 휴대폰의 실제 동작은 별도 실기기 검증이 필요합니다.
 
 `https://smile7962.github.io/paju-giljabi/v2/`
 
-**주의:** 이 주소는 `v2/`가 배포된 뒤에만 유효합니다. 배포 전 QR 스캔 테스트 성공을 주장하지 마세요. 원본 `index.html`은 변경하지 않습니다.
+**주의:** GitHub Pages 배포 성공은 QR·모바일 네비게이션·Gemini 실제 호출의 성공을 보증하지 않습니다. 원본 `index.html`은 변경하지 않습니다.
 
 모바일에서는 `mobile.html#trip=...` 링크로 방문정보를 전달합니다. QR에는 방문지명과 좌표가 인코딩되어 있으며 암호화되지 않습니다. **민원인 이름·전화번호·비공개 현장정보를 넣지 마세요.**
 
@@ -403,7 +403,7 @@ UI의 **생성형 AI 초안 요청** 기능은 `v2/worker/ai-draft.js`에 포함
 - Gemini API 키는 서버 환경변수 `GEMINI_API_KEY`에만 저장합니다. 프록시 토큰 `TRIPON_DEMO_TOKEN` 역시 서버 측 비밀변수입니다. 브라우저에는 값을 사용자가 직접 입력하며 저장하지 않습니다.
 - 출력은 `purpose/check/action` 3개 문자열만 허용합니다. 출장 날짜·장소·참석자·사진·문서번호·HWPX·다른 출장지 내용은 AI가 수정하지 않습니다.
 - AI 모델은 서버 환경변수 `GEMINI_MODEL`로 교체할 수 있습니다. 시연 기본값 `gemini-3.5-flash-lite`이며 실제 사용 계정의 접근권한과 비용을 확인하세요.
-- **프로그램 배포와 AI Worker 배포는 별도입니다.** GitHub Pages에는 v0.9 UI만 배포되고, 서버는 아직 배포되지 않아 현재 실제 Gemini 호출은 불가능합니다.
+- **프로그램 배포와 AI Worker 배포는 별도입니다.** GitHub Pages에는 v1.5 UI가 배포되어 있습니다. 승인된 프록시 서버는 별도 설정이 필요하며, v1.5의 Gemini **직접 연결**은 Worker 없이 합성 시연만 가능하되 실제 200 응답과 브라우저 CORS는 아직 실기기 확인 전입니다.
 - **설치·설정·검증:** [v2/worker/SETUP.md](worker/SETUP.md). 실무자료의 외부 전송은 기관 보안 승인 전까지 금지합니다.
 
 ### AI 기능 테스트
@@ -612,7 +612,7 @@ v1.0에서 모든 출장지에 동일하게 적용하던 체류시간과 하나�
 
 1. **사용자 PC 실제 지도·경로표 시험:** 출장지 3~5곳, 서로 다른 체류시간과 2건 이상 방문약속
 2. **휴대폰→PC 현장기록 전송 실기기 확인:** 사진+TXT 공유, 원래 파일명 유지, PC 자동분류, 출장별 HWPX 저장
-3. **Cloudflare Worker 실제 배포·Gemini 합성자료 호출 성공 확인:** 계정 소유자의 비밀키 등록·호출권한 확인 필요
+3. **Gemini 직접 연결 실기기 시험:** 별도 시연키로 합성자료 HTTP 200·CORS 확인. 기관 승인 후 보안 프록시를 선택하는 경우에만 Worker 배포
 4. **PC ↔ 모바일 ↔ HWPX 출장결과보고 실기기 통합 검증**
 5. **2026년 공공 AI 대전환 챌린지 제출용 시험결과·보안 및 실행 매뉴얼**
 
@@ -625,3 +625,9 @@ v1.0에서 모든 출장지에 동일하게 적용하던 체류시간과 하나�
 - 카카오 주소검색 → 카카오 장소명 키워드검색 → OpenStreetMap 검색 순으로 대체합니다.
 - 예시 입력은 실제 위치가 명시된 도로명주소 3개소로 변경했습니다.
 - 카카오 SDK 접속 또는 권한 오류가 있으면 OpenStreetMap만 사용할 수 있으며, 공용 지도서비스 정책상 일부 장소는 여전히 검색 불가할 수 있습니다.
+
+## v1.5 배포 검증 자동화 (2026-10-19)
+
+- GitHub Actions `v2-ci.yml`에서 Node 22 JS 문법·전체 기존 회귀시험·브라우저 리소스/키 저장금지 정적 검사를 실행합니다.
+- 검증 순서 및 실기기 체크리스트: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+- 테스트와 GitHub Pages 배포가 모두 성공해도 실제 Gemini API 키 응답·브라우저 CORS, 파주시 원본 HWPX 한글 렌더링 및 기관 외부전송 승인은 별도로 확인해야 합니다.
