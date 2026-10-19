@@ -1,0 +1,66 @@
+name: 출장ON AI v2 자동검증
+
+on:
+  push:
+    paths:
+      - 'v2/**'
+      - '.github/workflows/v2-ci.yml'
+  pull_request:
+    paths:
+      - 'v2/**'
+      - '.github/workflows/v2-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-regression:
+    name: Node 22 회귀검증 및 정적검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 저장소 확인
+        uses: actions/checkout@v4
+      - name: Node.js 22 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: ''
+      - name: 모든 v2 JavaScript 문법검사
+        shell: bash
+        run: |
+          find v2 -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | sort -z | xargs -0 -r -n 1 node --check
+      - name: Gemini 직접·프록시·출장/경로/인계 회귀시험
+        run: node --test v2/tests/*.test.mjs v2/worker/ai-draft.test.mjs
+      - name: 배포 HTML 연결 및 AI 자격증명 안전성 점검
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { existsSync, readFileSync } from 'node:fs';
+          import { dirname, resolve } from 'node:path';
+          for (const page of ['v2/index.html','v2/mobile.html','v2/print.html','v2/report.html']) {
+            const html=readFileSync(page,'utf8');
+            for (const [,src] of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)) {
+              if (/^https?:\/\//.test(src)) continue;
+              assert.ok(!src.includes('..'), page+': script path traversal');
+              assert.ok(existsSync(resolve(dirname(page),src.split('?')[0])), page+': missing '+src);
+            }
+          }
+          const html=readFileSync('v2/report.html','utf8');
+          const js=readFileSync('v2/report.js','utf8');
+          const direct=readFileSync('v2/gemini-direct.js','utf8');
+          for (const id of ['aiMode','aiModel','aiDirectKey','clearAiDirectKey','aiSyntheticConfirmed','testAiConnection','generateAiDraft','applyDraft']) {
+            assert.match(html, new RegExp('id=["\\']'+id+'["\\']'), 'Missing UI '+id);
+          }
+          assert.match(js,/\$\("aiMode"\)\.value\s*=\s*"proxy"/,'Proxy must be the default');
+          assert.match(js,/\$\("aiDirectKey"\)\.value\s*=\s*""/,'Direct key must be cleared');
+          assert.match(direct,/"x-goog-api-key"/,'Header-based Gemini key');
+          assert.ok(!/\b(?:localStorage|sessionStorage)\s*\./.test(direct),'Direct module must not persist keys');
+          assert.ok(!/\bconsole\s*\./.test(direct),'Direct module must not log keys');
+          console.log('HTML/script paths and credential safety checks PASS');
+          NODE
