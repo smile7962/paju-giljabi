@@ -259,7 +259,7 @@ function photoUrl(ph) {
   return imageUrls.get(ph.id);
 }
 function buildPhotoPages() {
-  const valid = photos.filter(ph => ph.visitId === currentId && previewSupported(ph));
+  const valid = orderedPhotos(currentId).filter(previewSupported);
   const pages = [];
   for (let i = 0; i < valid.length; i += 2) {
     const sheet = document.createElement("section");
@@ -291,18 +291,15 @@ function renderAll() {
 function fileId(file) {
   return trip.id + "|" + file.name + "|" + file.size + "|" + file.lastModified;
 }
-function expectedAddress(name) {
-  return name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").replace(/\s+/g, "").slice(0, 48) || "출장지";
-}
 function autoMatch(filename) {
-  // 휴대폰에서 생성한 원본 형식과 출장/방문지/계획주소 3가지가 모두 일치해야 함
-  const prefix = trip.id + "_";
-  if (!filename.startsWith(prefix)) return "";
-  const suffix = filename.slice(prefix.length);
-  const m = /^(S\d{2})_(.+)_(\d+)\.(jpe?g|png|webp|heic|heif)$/i.exec(suffix);
-  if (!m) return "";
-  const stop = stops.find(s => s.id === m[1]);
-  return stop && m[2] === expectedAddress(stop.name) ? stop.id : "";
+  return TripHandoff.photoMatch(filename, trip.id, stops);
+}
+function orderedPhotos(id) {
+  return photos.filter(ph => ph.visitId === id).sort((a, b) => {
+    const x = TripHandoff.photoNumber(a.name), y = TripHandoff.photoNumber(b.name);
+    if (x !== null && y !== null && x !== y) return x - y;
+    return (a.importedAt || "").localeCompare(b.importedAt || "");
+  });
 }
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -431,50 +428,29 @@ function renderPhotos() {
   }
 }
 function applyCopiedMemo() {
-  const lines = $("mobileMemo").value.replace(/\r/g, "").split("\n");
-  const id = /^출장ID:\s*(.+)\s*$/.exec(lines[0]?.trim() || "")?.[1]?.trim();
-  if (!id || id !== trip.id) {
-    reportStatus("출장 ID가 현재 출장계획과 다릅니다. 다른 출장의 메모는 가져오지 않았습니다.", true);
+  let parsed;
+  try {
+    parsed = TripHandoff.readMemo($("mobileMemo").value, trip.id, stops);
+  } catch (error) {
+    reportStatus(error.message, true);
     return;
   }
-  let matched = 0, skipped = 0, stop = null, collecting = false, memoLines = [];
-  const finish = () => {
-    if (!stop) return;
-    const memo = memoLines.join("\n").trim();
-    if (memo && memo !== "미입력") {
-      const entry = resultFor(stop.id);
-      if ((entry.check || "").trim()) skipped++;
-      else {
-        draft.results[stop.id] = { ...entry, check: memo };
-        matched++;
-      }
-    }
-  };
-  for (const line of lines.slice(1)) {
-    const heading = /^(\d+)\.\s+(.+?)\s+\[(방문완료|미완료)\]\s*$/.exec(line);
-    if (heading) {
-      finish();
-      const idx = Number(heading[1]) - 1;
-      stop = stops[idx]?.name === heading[2] ? stops[idx] : null;
-      collecting = false; memoLines = [];
-      if (!stop) skipped++;
+  let matched = 0, skipped = parsed.skipped;
+  for (const item of parsed.found) {
+    const existing = resultFor(item.stopId);
+    if ((existing.check || "").trim()) {
+      skipped++;
       continue;
     }
-    if (!stop) continue;
-    if (line.startsWith("현장메모:")) {
-      collecting = true;
-      memoLines.push(line.slice("현장메모:".length).trim());
-    } else if (line.startsWith("사진:")) {
-      collecting = false;
-    } else if (collecting) {
-      memoLines.push(line);
-    }
+    draft.results[item.stopId] = { ...existing, check: item.memo };
+    matched++;
   }
-  finish();
   storeDraft();
+  dismissDraft();
   selectStop(currentId);
   renderDocument();
-  reportStatus("휴대폰 메모 " + matched + "개 출장지에 반영 · 기존 기록/주소 불일치 등 " + skipped + "개 건너뜀", skipped > 0);
+  reportStatus("휴대폰 메모 " + matched + "개 출장지에 반영 · 기존 작성내용 또는 주소 불일치 " +
+    skipped + "개 건너뜀. 각 출장지 내용을 확인하세요.", skipped > 0);
 }
 async function start() {
   try {
@@ -618,6 +594,23 @@ $("photoFiles").addEventListener("change", async event => {
   await importFiles(files);
 });
 $("applyMobileMemo").addEventListener("click", applyCopiedMemo);
+$("mobileMemoFile").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  if (!/\.txt$/i.test(file.name) || file.size > 200 * 1024) {
+    return reportStatus("출장기록은 200KB 이하의 TXT 파일만 불러올 수 있습니다.", true);
+  }
+  try {
+    const content = (await file.text()).replace(/^\uFEFF/, "");
+    TripHandoff.readMemo(content, trip.id, stops); // ID/address validation
+    $("mobileMemo").value = content;
+    reportStatus("출장기록 TXT를 불러왔습니다. 메모를 확인한 뒤 '출장기록 적용'을 누르세요.");
+  } catch (error) {
+    reportStatus("출장기록 TXT 불러오기 실패: " + error.message, true);
+  }
+});
+
 /* Export a COPY of the uploaded genuine HWPX. The browser never uploads or
  * modifies the original file, and keeps the same report/stop separation.
  */
@@ -648,7 +641,7 @@ $("saveHwpx").addEventListener("click", async () => {
       hwpxMessage("작성 작업을 취소했습니다. 기존 입력내용은 유지됩니다.");
       return;
     }
-    const selected = photos.filter(p => p.visitId === currentId);
+    const selected = orderedPhotos(currentId);
     const include = $("includeHwpxPhotos").checked;
     const attached = include
       ? selected.map(photo => ({ ...photo, visitName: stop.name }))
