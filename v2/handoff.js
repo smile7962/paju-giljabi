@@ -6,7 +6,7 @@
   const LIMIT = 100000;
   function addressPart(address) {
     return String(address || "").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "")
-      .replace(/\s+/g, " ").slice(0, 48) || "출장지";
+      .replace(/\s+/g, "").slice(0, 48) || "출장지";
   }
   function photoMatch(filename, tripId, stops) {
     if (typeof filename !== "string" || typeof tripId !== "string" ||
@@ -17,9 +17,9 @@
     const stop = stops.find(item => item.id === match[1]);
     if (!stop) return "";
     const address = addressPart(stop.name);
-    // Earlier mobile versions kept spaces, while the PC erroneously removed
-    // them. Accept either exact planned address or that historical form.
-    return match[2] === address || match[2] === address.replace(/\s+/g, "") ?
+    // Keep the original mobile/PC convention: address whitespace removed.
+    // Accept a filename with spaces too, if an email app preserved that form.
+    return match[2] === address || match[2].replace(/\s+/g, "") === address ?
       stop.id : "";
   }
   function photoNumber(filename) {
