@@ -78,9 +78,7 @@ function displayError(message) {
   $("mobileMain").hidden = true;
   $("errorText").textContent = message;
 }
-function sanitize(value) {
-  return value.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "").replace(/\s+/g, "").slice(0, 48) || "출장지";
-}
+/* Mobile and PC use the same planned-address filename rule. */
 function extFor(file) {
   const byMime = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif" };
   if (file.type && !byMime[file.type]) throw new Error("지원하지 않는 사진 형식입니다.");
@@ -90,7 +88,7 @@ function extFor(file) {
   return match[1].toLowerCase();
 }
 function buildName(stop, seq, file) {
-  return trip.id + "_" + stop.id + "_" + sanitize(stop.name) + "_" + String(seq).padStart(2, "0") + "." + extFor(file);
+  return trip.id + "_" + stop.id + "_" + TripHandoff.addressPart(stop.name) + "_" + String(seq).padStart(2, "0") + "." + extFor(file);
 }
 function current() { return stops[index]; }
 /* 내비 실행 실패 시 사용자가 웹지도/설치 경로를 선택할 수 있게 남겨둔다.
@@ -306,34 +304,65 @@ async function saveFiles(files) {
   renderPhotos();
   if (message) notice(message);
 }
+function recordFile() {
+  const content = TripHandoff.memoText(trip.id, stops, state, photos);
+  return new File(["\uFEFF", content], trip.id + "_출장기록.txt", {
+    type: "text/plain;charset=utf-8"
+  });
+}
+function downloadMemo() {
+  try {
+    const file = recordFile();
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    notice("출장기록 TXT 저장을 요청했습니다. 휴대폰 다운로드 항목을 확인하세요.");
+  } catch (err) {
+    notice("출장기록 저장 실패: " + err.message);
+  }
+}
 async function sharePhotos() {
-  if (!photos.length) return;
-  const files = photos.map(p => new File([p.blob], p.name, { type: p.type || "image/jpeg" }));
-  if (!navigator.share || !navigator.canShare || !navigator.canShare({ files })) {
-    alert("이 기기는 사진 여러 장 공유를 지원하지 않습니다. 방문지별 사진의 '파일 저장' 버튼을 이용한 후 허용된 업무메일에 첨부하세요.");
+  let photoFiles, memo;
+  try {
+    photoFiles = photos.map(p => new File([p.blob], p.name, {
+      type: p.type || "image/jpeg"
+    }));
+    memo = recordFile();
+  } catch (err) {
+    alert("출장자료 준비 실패: " + err.message);
+    return;
+  }
+  const combined = [...photoFiles, memo];
+  const supported = files => navigator.canShare?.({ files }) === true;
+  const files = supported(combined) ? combined :
+    photoFiles.length && supported(photoFiles) ? photoFiles : null;
+  if (!navigator.share || !files) {
+    alert("이 기기에서는 파일 공유를 지원하지 않습니다. 사진별 파일 저장과 '출장기록 TXT 저장'을 이용한 뒤 허용된 업무메일에 첨부하세요.");
     return;
   }
   try {
-    await navigator.share({ files, title: "출장ON AI 현장사진" });
-    alert("공유 메뉴를 종료했습니다. 이메일 앱에서 실제 전송 여부를 확인하세요.");
+    await navigator.share({ files, title: "출장ON AI 현장기록" });
+    alert(files === combined
+      ? "공유 메뉴를 종료했습니다. 이메일에서 사진과 출장기록 TXT가 모두 첨부됐는지, 실제 전송됐는지 확인하세요."
+      : "사진 공유 메뉴를 종료했습니다. TXT 동시 첨부가 안 되어 '출장기록 TXT 저장'으로 별도 전달해야 합니다. 이메일 전송 여부도 확인하세요.");
   } catch (err) {
-    if (err.name !== "AbortError") alert("사진 공유에 실패했습니다. 사진별 파일 저장을 이용하세요.");
+    if (err.name !== "AbortError") alert("파일 공유에 실패했습니다. 개별 저장으로 전환하세요.");
   }
 }
 async function copyMemo() {
-  const text = [
-    "출장ID: " + trip.id,
-    ...stops.flatMap((s, i) => [
-      (i + 1) + ". " + s.name + " [" + (state.done.includes(s.id) ? "방문완료" : "미완료") + "]",
-      "현장메모: " + (state.memos[s.id] || "미입력"),
-      ...photos.filter(p => p.stopId === s.id).map(p => "사진: " + p.name)
-    ])
-  ].join("\n");
+  let content;
+  try { content = TripHandoff.memoText(trip.id, stops, state, photos); }
+  catch (err) { alert(err.message); return; }
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(content);
     alert("출장기록을 복사했습니다. 업무메일 본문 등에 붙여넣을 수 있습니다.");
   } catch (_) {
-    alert("자동 복사가 차단되었습니다. HTTPS 환경에서 다시 시도하세요.");
+    alert("자동 복사가 차단되었습니다. '출장기록 TXT 저장'을 사용하세요.");
   }
 }
 async function init() {
@@ -396,4 +425,5 @@ $("photosInput").addEventListener("change", async e => {
 });
 $("sharePhotos").addEventListener("click", sharePhotos);
 $("copyMemo").addEventListener("click", copyMemo);
+$("downloadMemo").addEventListener("click", downloadMemo);
 init();
