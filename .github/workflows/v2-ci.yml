@@ -55,7 +55,7 @@ jobs:
           const js=readFileSync('v2/report.js','utf8');
           const direct=readFileSync('v2/gemini-direct.js','utf8');
           for (const id of ['aiMode','aiModel','aiDirectKey','clearAiDirectKey','aiSyntheticConfirmed','testAiConnection','generateAiDraft','applyDraft']) {
-            assert.match(html, new RegExp('id=["\\']'+id+'["\\']'), 'Missing UI '+id);
+            assert.ok(html.includes('id="'+id+'"') || html.includes("id='"+id+"'"), 'Missing UI '+id);
           }
           assert.match(js,/\$\("aiMode"\)\.value\s*=\s*"proxy"/,'Proxy must be the default');
           assert.match(js,/\$\("aiDirectKey"\)\.value\s*=\s*""/,'Direct key must be cleared');
