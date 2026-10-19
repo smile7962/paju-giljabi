@@ -40,7 +40,7 @@
     return payload;
   }
   function asMinute(time) {
-    if (!/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(time || "")) {
+    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time || "")) {
       throw Error("시간표의 HH:MM 형식이 올바르지 않습니다.");
     }
     const [h, m] = time.split(":").map(Number);
