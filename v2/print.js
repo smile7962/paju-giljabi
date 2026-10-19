@@ -106,9 +106,14 @@ function createQr(data) {
     return;
   }
   try {
-    const encoded = TripIO.encode(data.trip);
-    const url = TripIO.locationLink(encoded, new URL("index.html", location.href).href);
-    if (url.length > 1900) throw Error("QR 데이터가 너무 깁니다.");
+    const share = TripIO.qrLink(data.trip, new URL("index.html", location.href).href);
+    const url = share.link;
+    if (share.reduced) {
+      const notice = document.createElement("div");
+      notice.className = "qr-note";
+      notice.textContent = "QR 용량 초과로 방문예정시간 제외 · 방문지 정보만 인계";
+      $("qrcode").append(notice);
+    }
     new QRCode($("qrcode"), {
       text: url, width: 180, height: 180,
       colorDark: "#102a56", colorLight: "#ffffff",
