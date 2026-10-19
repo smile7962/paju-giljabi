@@ -308,7 +308,10 @@ async function calculate() {
     $("print").disabled = false;
     const simple = p => [p.label, +p.lat.toFixed(6), +p.lng.toFixed(6)];
     const tripId = "t-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
-    confirmedTrip = [1, tripId, simple(origin), result.visits.map(simple)];
+    confirmedTrip = TripIO.withSchedule(
+      [1, tripId, simple(origin), result.visits.map(simple)],
+      result.schedule || null
+    );
     printableRoute = {
       version: 1,
       origin: { label: origin.label, lat: origin.lat, lng: origin.lng },
@@ -395,12 +398,14 @@ ensureMap();
 function confirmAndShare(stopIndex = null) {
   if (!confirmedTrip) return;
   let link;
+  let scheduleOmitted = false;
   try {
-    const encoded = TripIO.encode(confirmedTrip);
-    link = TripIO.locationLink(encoded, location.href);
+    const share = TripIO.qrLink(confirmedTrip, location.href, Number.isInteger(stopIndex) ? 1880 : 1900);
+    link = share.link;
     if (Number.isInteger(stopIndex)) {
       link += "&stop=S" + String(stopIndex + 1).padStart(2, "0");
     }
+    scheduleOmitted = share.reduced === true;
     try { localStorage.setItem("tripon-last-plan", JSON.stringify(confirmedTrip)); }
     catch (_) { /* 개인 브라우징/저장공간 제한 */ }
   } catch (err) {
@@ -410,8 +415,12 @@ function confirmAndShare(stopIndex = null) {
 
   $("qrTitle").textContent = stopIndex === null ? "모바일 출장 인계" : "T맵 · 선택 출장지 보내기";
   $("qrDescription").textContent = stopIndex === null
-    ? "아래 QR을 휴대폰 카메라로 스캔하면 확정된 출장지가 열립니다."
-    : "휴대폰으로 스캔해 해당 출장지를 선택한 뒤 T맵 앱 실행 버튼을 누르세요.";
+    ? (scheduleOmitted
+        ? "QR 용량 때문에 예정시간은 제외했습니다. 방문순서·주소만 모바일에 인계됩니다."
+        : "QR을 스캔하면 방문순서와 예정시간표가 모바일에 열립니다. 예정시간은 실시간 교통과 다를 수 있습니다.")
+    : (scheduleOmitted
+        ? "QR 용량 때문에 예정시간이 제외됐습니다. 선택 출장지만 모바일에 전달합니다."
+        : "해당 출장지를 선택해 모바일 지도앱을 여세요. 계획시간표도 함께 전달됩니다.");
   const qrBox = $("qrcode");
   qrBox.replaceChildren();
   $("openMobile").href = link;
@@ -436,7 +445,11 @@ function confirmAndShare(stopIndex = null) {
         if (canvas) $("printQr").src = canvas.toDataURL("image/png");
         $("printDate").textContent = "계획 확정: " + new Date().toLocaleDateString("ko-KR");
       }
-      hint.textContent = stopIndex === null ? "QR 생성 완료 · 경로표 인쇄에도 QR이 포함됩니다." : "선택한 방문지로 모바일 화면이 열립니다. T맵 실행은 휴대폰에서 선택합니다.";
+      hint.textContent = scheduleOmitted
+        ? "주의: QR 길이 제한으로 예정시간표를 제외하고 방문지 정보만 전달합니다. 주소명을 줄여 다시 계산하세요."
+        : (stopIndex === null
+          ? "QR 생성 완료 · 모바일에서 방문순서·예정시간 확인 가능. 경로표에도 QR이 포함됩니다."
+          : "모바일에서 해당 방문지와 예정시간 확인 가능. T맵 실행은 휴대폰에서 선택합니다.");
     } catch (_) {
       qrBox.replaceChildren();
       hint.textContent = "QR 생성에 실패했습니다. 방문지명을 줄이고 다시 시도하세요.";

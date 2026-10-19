@@ -20,13 +20,29 @@ function saveState() {
   try { localStorage.setItem(prefix + trip.id, JSON.stringify(state)); }
   catch (_) { notice("메모 자동저장에 실패했습니다. 출장기록을 복사해 보관하세요."); }
 }
+// The optional fifth QR field contains only an expected timeline.
+function planTime(minutes) {
+  return String(Math.floor(minutes / 60)).padStart(2, "0") + ":" +
+    String(minutes % 60).padStart(2, "0");
+}
 function unpack(payload) {
+  const schedule = TripIO.readSchedule(payload);
   return {
     id: payload[1],
     origin: { name: payload[2][0], lat: payload[2][1], lng: payload[2][2] },
+    depart: schedule ? planTime(schedule.depart) : null,
+    returnAt: schedule ? planTime(schedule.returnAt) : null,
     stops: payload[3].map((p, i) => ({
       id: "S" + String(i + 1).padStart(2, "0"),
-      name: p[0], lat: p[1], lng: p[2]
+      name: p[0], lat: p[1], lng: p[2],
+      planned: schedule ? {
+        arrival: planTime(schedule.stops[i][0]),
+        start: planTime(schedule.stops[i][1]),
+        finish: planTime(schedule.stops[i][2]),
+        appointment: schedule.stops[i][3] === 1,
+        wait: schedule.stops[i][1] - schedule.stops[i][0],
+        dwell: schedule.stops[i][2] - schedule.stops[i][1]
+      } : null
     }))
   };
 }
@@ -156,6 +172,39 @@ function setupPicker() {
     $("stopPicker").append(o);
   });
 }
+function renderSchedule() {
+  const panel = $("mobileSchedule");
+  if (!trip.depart || !current().planned) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  const plan = current().planned;
+  $("plannedReturn").textContent = "계획 출발 " + trip.depart + " · 예상 복귀 " + trip.returnAt;
+  const info = [
+    "예상 도착 " + plan.arrival,
+    plan.appointment ? "방문약속 " + plan.start : "업무 시작 " + plan.start,
+    "업무 종료 " + plan.finish,
+    "체류 " + plan.dwell + "분"
+  ];
+  if (plan.wait) info.push("예상 대기 " + plan.wait + "분");
+  $("currentPlannedTimes").textContent = info.join(" · ");
+  const list = $("mobileScheduleList");
+  list.replaceChildren();
+  stops.forEach((stop, position) => {
+    const t = stop.planned;
+    const li = document.createElement("li");
+    if (position === index) li.className = "active";
+    const name = document.createElement("strong");
+    name.textContent = (position + 1) + ". " + stop.name;
+    const desc = document.createElement("span");
+    desc.textContent = "도착 " + t.arrival +
+      (t.appointment ? " · 약속 " : " · 현장 ") +
+      t.start + "–" + t.finish + " · 체류 " + t.dwell + "분";
+    li.append(name, desc);
+    list.append(li);
+  });
+}
 function render() {
   const stop = current();
   const done = state.done.includes(stop.id);
@@ -172,6 +221,7 @@ function render() {
   $("finish").disabled = done;
   $("memo").value = state.memos[stop.id] || "";
   $("navFallback").hidden = true;
+  renderSchedule();
   drawMap();
   renderPhotos();
 }
