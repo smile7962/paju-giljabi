@@ -34,9 +34,20 @@ node --test ai-draft.test.mjs
 
 테스트는 실제 Gemini API에 접근하지 않는 모의 응답입니다.
 
+## 3-1. 자동시험 (Windows PowerShell)
+
+아래 명령은 합성자료와 모의 Gemini 응답만 사용하며 실제 API 키나 네트워크 연결이 필요하지 않습니다.
+
+```powershell
+# GitHub 저장소 루트에서 실행
+node --test v2/worker/ai-draft.test.mjs v2/tests/draft-ai.test.mjs
+```
+
+**완료 기준:** 테스트 실패 0건. 요청 스키마·사용자 승인·API 키 비노출·토큰·출처·호출한도·오류 응답을 검사합니다.
+
 ## 4. Worker 배포 및 보안 설정
 
-`v2/worker/wrangler.toml`에서 `namespace_id`를 자신의 Cloudflare 계정에서 사용할 고유한 정수 문자열로 정하고, 제한 설정을 확인합니다.
+`v2/worker/wrangler.toml`의 `namespace_id`를 본인 Cloudflare 계정의 다른 제한 바인딩과 겹치지 않는 양의 정수 문자열로 설정하세요. 현재 값 `"1007"`은 예시입니다. 요청 제한은 시연용 5회/분입니다.
 
 ```bash
 cd v2/worker
@@ -52,6 +63,24 @@ npx wrangler@latest secret put TRIPON_DEMO_TOKEN
 - `DRAFT_RATE_LIMITER`는 Wrangler의 `ratelimits` 바인딩으로 자동 설정됩니다. 없는 경우 서버가 요청을 거부합니다.
 - 실제 운영환경에서는 별도의 사용자 인증·감사로그·요금 상한·기관 승인망 연결까지 필요하며, 본 시연용 Worker를 그대로 업무에 사용하지 마세요.
 
+### 접근 토큰을 Windows PowerShell에서 생성
+
+비밀번호 대신 32바이트 암호학적 난수의 64자리 16진수 문자열을 사용합니다. 명령 결과나 키를 채팅·GitHub에 공유하지 마세요.
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$token = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+# $token의 값을 안전하게 보관한 다음 아래 명령이 요청할 때 직접 입력
+npx wrangler@latest secret put TRIPON_DEMO_TOKEN
+```
+
+위 코드는 토큰을 Wrangler에 자동 전달하지 않습니다. 비밀키는 서버 환경에만 등록하고 소스코드·주소창에 넣지 않습니다.
+
+**배포와 검증은 별개입니다.** 배포된 `https://...workers.dev/draft` 주소를 PC 프로그램에 입력해 합성자료 연결 테스트까지 성공해야 실제 모델 연결 완료입니다.
+
+**Gemini 무료등급 주의:** 공식 가격표에 따르면 무료 티어 입력·출력은 Google 제품 개선에 사용될 수 있습니다. 반드시 가상 출장메모만 사용하고 개인정보·실제 업무자료를 전송하지 마세요.
+
 `npx wrangler deploy` 결과의 Worker 기본 주소가 예를 들어
 `https://tripon-ai-draft-demo.<계정>.workers.dev` 라면 프로그램에 입력할 주소는
 `https://tripon-ai-draft-demo.<계정>.workers.dev/draft`입니다.
@@ -66,6 +95,6 @@ npx wrangler@latest secret put TRIPON_DEMO_TOKEN
 6. 초안 결과를 원본 메모와 비교하고 수동 수정 → **확인 후 적용** 클릭
 7. 기존 **원본 HWPX로 저장**은 승인된 초안만 사용하고, 사진·서식은 PC 내부에서 처리
 
-실패 시 화면의 상태 문구를 확인합니다. `401` 토큰 오류, `429` 분당 제한, `503` 서버 비밀키·바인딩 미설정, `502` 모델 권한·API 오류입니다.
+실패 시 `401` 접근 토큰, `429` 분당 제한, `503` 서버 설정, `502` Gemini API 키·모델·사용량 제한, `504` 제공자 응답시간 초과 안내를 확인하세요. 오류 메시지에는 원문 프롬프트와 비밀키를 출력하지 않습니다.
 
 **중요:** 이 Worker는 아직 배포되지 않았습니다. GitHub 브랜치 병합·Pages 배포만으로 AI 호출이 자동 연결되지 않습니다.
