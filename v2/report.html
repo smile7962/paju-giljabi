@@ -7,6 +7,7 @@
   <title>출장ON AI | 출장결과보고서</title>
   <link rel="stylesheet" href="./report.css">
   <script src="./trip.js" defer></script>
+  <script src="./handoff.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
   <script src="./photo-hwpx.js" defer></script>
   <script src="./hwpx.js" defer></script>
@@ -124,7 +125,12 @@
         <hr>
         <h3>모바일 출장기록 가져오기</h3>
         <textarea id="mobileMemo" rows="5" placeholder="휴대폰 '출장기록 복사' 내용을 여기에 붙여넣으세요."></textarea>
-        <button id="applyMobileMemo" type="button" class="btn outline">출장기록 적용</button>
+        <div class="memo-import-row">
+          <label class="file-button" for="mobileMemoFile">출장기록 TXT 불러오기</label>
+          <input id="mobileMemoFile" type="file" accept=".txt,text/plain">
+          <button id="applyMobileMemo" type="button" class="btn outline">출장기록 적용</button>
+        </div>
+        <p class="helper">휴대폰에서 TXT 파일을 저장해 PC로 전달한 경우 직접 선택하세요. 가져온 내용을 검토한 후 '출장기록 적용'을 눌러야 반영됩니다. 기존 작성내용은 덮어쓰지 않습니다.</p>
         <hr>
         <h3>현장사진 불러오기</h3>
         <label class="file-button" for="photoFiles">사진 여러 장 선택</label>
