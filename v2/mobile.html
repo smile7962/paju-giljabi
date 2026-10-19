@@ -29,6 +29,18 @@
         <p id="source">출장지 확인</p>
         <label for="stopPicker" class="sr-only">방문지 선택</label><select id="stopPicker" aria-label="방문지 선택"></select>
       </div>
+      <section id="mobileSchedule" class="mobile-schedule" aria-labelledby="scheduleHeading" hidden>
+        <div class="schedule-header">
+          <h2 id="scheduleHeading">확정된 출장 예정시간표</h2>
+          <span id="plannedReturn"></span>
+        </div>
+        <div id="currentPlannedTimes" class="current-planned-times"></div>
+        <p class="schedule-warning">사무실 계획 기준 · 실시간 교통·현장 지연은 반영하지 않습니다. 표시된 시각은 실제 방문기록이 아닙니다.</p>
+        <details class="schedule-all">
+          <summary>전체 방문지 시간표 보기</summary>
+          <ol id="mobileScheduleList"></ol>
+        </details>
+      </section>
       <section id="fieldMap" aria-label="방문지 지도"></section>
       <div id="mapNote" class="map-note">계획된 이동구간을 표시합니다. 실시간 길안내는 외부 내비를 이용하세요.</div>
       <section class="navbox" id="navbox">
