@@ -175,3 +175,20 @@ textarea{line-height:1.55;resize:vertical}
 .memo-import-row .file-button,.memo-import-row .btn{flex:1 1 155px;text-align:center}
 .memo-import-row input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 @media print{.memo-import-row{display:none!important}}
+
+
+/* v1.5 · explicit AI mode switch; hidden settings stay hidden. */
+.draft-panel #aiMode,.draft-panel #aiModel{
+  display:block;width:100%;min-width:0;border:1px solid #cbd5e1;
+  border-radius:8px;padding:9px 8px;background:#fff;color:#0f172a;
+  font-size:12px;margin:5px 0 8px
+}
+.draft-panel .ai-mode-settings{
+  border:1px solid #dce5f1;background:#fff;border-radius:8px;
+  padding:10px;margin:9px 0
+}
+.draft-panel .ai-mode-settings[hidden]{display:none!important}
+.draft-panel #aiDirectSettings{border-color:#f1c8aa;background:#fffaf5}
+.draft-panel #aiDirectWarning{color:#854d0e;line-height:1.6}
+.draft-panel #clearAiDirectKey{font-size:11px;margin:6px 0}
+.draft-panel input[type=password]{min-width:0}
